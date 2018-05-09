@@ -1057,9 +1057,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         if (!strcmp(p1 + 1, "problems")) {
             contest_session_maybe_update(rq->ejs, rq->ecs);
             contest_info_maybe_update(rq->ejs, rq->ecs);
-            //rq->ops = &ejfuse_contest_info_operations;
-            //return 0;
-            return -ENOENT;
+            rq->ops = &ejfuse_contest_problems_operations;
+            return 0;
         }
         return -ENOENT;
     }
