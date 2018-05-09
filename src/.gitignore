@@ -1,3 +1,4 @@
 *.o
 ejfuse
 deps.make
+ejfuse.log
