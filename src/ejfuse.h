@@ -48,7 +48,6 @@ struct EjFuseState
     int owner_uid;
     int owner_gid;
     long long start_time_us;
-    FILE *log_f;
 
     // the current time (microseconds)
     _Atomic long long current_time_us;

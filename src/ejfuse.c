@@ -1082,7 +1082,6 @@ int main(int argc, char *argv[])
     ejs->owner_gid = getgid();
     ejs->inode_hash = inode_hash_create();
     ejs->contests_state = contests_state_create();
-    ejs->log_f = fopen("ejfuse.log", "a");
 
     update_current_time(ejs);
     ejs->start_time_us = ejs->current_time_us;
