@@ -1068,6 +1068,55 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
 
 int main(int argc, char *argv[])
 {
+    const unsigned char *ej_user = NULL;
+    const unsigned char *ej_password = NULL;
+    const unsigned char *ej_url = NULL;
+
+    int work = 0;
+    do {
+        work = 0;
+        if (argc >= 3 && !strcmp(argv[1], "--user")) {
+            if (ej_user) {
+                fprintf(stderr, "--user specified more than once\n");
+                return 1;
+            }
+            ej_user = argv[2];
+            memmove(&argv[1], &argv[3], (argc - 2) * sizeof(argv[0]));
+            argc -= 2;
+            work = 1;
+        } else if (argc >= 3 && !strcmp(argv[1], "--password")) {
+            if (ej_password) {
+                fprintf(stderr, "--password specified more than once\n");
+                return 1;
+            }
+            ej_password = argv[2];
+            memmove(&argv[1], &argv[3], (argc - 2) * sizeof(argv[0]));
+            argc -= 2;
+            work = 1;
+        } else if (argc >= 3 && !strcmp(argv[1], "--url")) {
+            if (ej_url) {
+                fprintf(stderr, "--url specified more than once\n");
+                return 1;
+            }
+            ej_url = argv[2];
+            memmove(&argv[1], &argv[3], (argc - 2) * sizeof(argv[0]));
+            argc -= 2;
+            work = 1;
+        }
+    } while (work);
+    if (!ej_user) {
+        fprintf(stderr, "--user not specified\n");
+        return 1;
+    }
+    if (!ej_password) {
+        fprintf(stderr, "--password not specified\n");
+        return 1;
+    }
+    if (!ej_url) {
+        fprintf(stderr, "--url not specified\n");
+        return 1;
+    }
+
     CURLcode curle = curl_global_init(CURL_GLOBAL_ALL);
     if (curle != CURLE_OK) {
         fprintf(stderr, "failed to initialize CURL\n");
@@ -1075,9 +1124,9 @@ int main(int argc, char *argv[])
     }
     
     struct EjFuseState *ejs = calloc(1, sizeof(*ejs));
-    ejs->url = strdup("http://localhost/ej/");
-    ejs->login = strdup("user01");
-    ejs->password = strdup("aaa");
+    ejs->url = strdup(ej_url);
+    ejs->login = strdup(ej_user);
+    ejs->password = strdup(ej_password);
     ejs->owner_uid = getuid();
     ejs->owner_gid = getgid();
     ejs->inode_hash = inode_hash_create();
