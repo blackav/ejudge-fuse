@@ -18,15 +18,15 @@ ejf_contest_info_getattr(struct EjFuseRequest *efr, const char *path, struct sta
     off_t size = 0;
 
     struct EjContestInfo *eci = contest_info_read_lock(ecs);
-    if (!eci || !eci->ok || !eci->info_json) {
+    if (!eci || !eci->ok || !eci->info_json_text) {
         contest_info_read_unlock(eci);
         goto done;
     }
-    size = strlen(eci->info_json);
+    size = eci->info_json_size;
     contest_info_read_unlock(eci);
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/INFO", efr->contest_id);
+    snprintf(fullpath, sizeof(fullpath), "/%d/%s", efr->contest_id, efr->file_name);
     stb->st_ino = get_inode(ejs, fullpath);
     stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
     stb->st_size = size;
@@ -56,7 +56,7 @@ ejf_contest_info_access(struct EjFuseRequest *efr, const char *path, int mode)
     mode &= 07;
 
     struct EjContestInfo *eci = contest_info_read_lock(ecs);
-    if (!eci || !eci->ok || !eci->info_json) {
+    if (!eci || !eci->ok || !eci->info_json_text) {
         contest_info_read_unlock(eci);
         goto done;
     }
@@ -83,7 +83,7 @@ static int
 ejf_contest_info_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
-    if (!eci || !eci->ok || !eci->info_json) {
+    if (!eci || !eci->ok || !eci->info_json_text) {
         contest_info_read_unlock(eci);
         return -ENOENT;
     }
@@ -103,19 +103,19 @@ ejf_contest_info_read(struct EjFuseRequest *efr, const char *path, char *buf, si
 {
     int retval = 0;
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
-    if (!eci || !eci->ok || !eci->info_json) {
+    if (!eci || !eci->ok || !eci->info_json_text) {
         retval = -EIO;
         goto cleanup;
     }
 
-    size_t len = strlen(eci->info_json);
+    size_t len = eci->info_json_size;
     if (!size || offset < 0 || offset >= len) {
         goto cleanup;
     }
     if (len - offset < size) {
         size = len - offset;
     }
-    memcpy(buf, eci->info_json + offset, size);
+    memcpy(buf, eci->info_json_text + offset, size);
     retval = size;
 
 cleanup:

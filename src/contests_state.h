@@ -25,7 +25,8 @@ struct EjContestInfo
     long long      recheck_time_us;
     unsigned char *log_s;
 
-    unsigned char *info_json;
+    unsigned char *info_json_text;
+    size_t info_json_size;
 };
 
 struct EjContestLog

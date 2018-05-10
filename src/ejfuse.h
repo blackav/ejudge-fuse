@@ -75,6 +75,7 @@ struct EjFuseRequest
 
     int contest_id;
     struct EjContestState *ecs;
+    const unsigned char *file_name;
 };
 
 struct EjFuseRequest;

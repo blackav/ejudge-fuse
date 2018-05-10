@@ -283,13 +283,15 @@ ej_get_top_level_session(struct EjFuseState *ejs)
     /*
 {
   "ok": true,
-  "user_id": 2,
-  "user_login": "user01",
-  "user_name": "user01",
-  "session": "1cca7131d51a2b96-78453be8c6aa2ea1",
-  "session_id": "1cca7131d51a2b96",
-  "client_key": "78453be8c6aa2ea1",
-  "expire": 1525379733
+  "result": {
+    "user_id": 2,
+    "user_login": "user01",
+    "user_name": "user01",
+    "session": "f2615a00b0baff33-d566e2c4cf762312",
+    "SID": "f2615a00b0baff33",
+    "EJSID": "d566e2c4cf762312",
+    "expire": 1526029211
+  }
 }
 {
   "ok": false,
@@ -307,19 +309,22 @@ ej_get_top_level_session(struct EjFuseState *ejs)
         goto invalid_json;
     }
     if (jok->type == cJSON_True) {
-        cJSON *jsession_id = cJSON_GetObjectItem(root, "SID");
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+        cJSON *jsession_id = cJSON_GetObjectItem(jresult, "SID");
         if (jsession_id && jsession_id->type == cJSON_String) {
             tls->session_id = strdup(jsession_id->valuestring);
         } else {
             goto invalid_json;
         }
-        cJSON *jclient_key = cJSON_GetObjectItem(root, "EJSID");
+        cJSON *jclient_key = cJSON_GetObjectItem(jresult, "EJSID");
         if (jclient_key && jclient_key->type == cJSON_String) {
             tls->client_key = strdup(jclient_key->valuestring);
         } else {
             goto invalid_json;
         }
-        cJSON *jexpire = cJSON_GetObjectItem(root, "expire");
+        cJSON *jexpire = cJSON_GetObjectItem(jresult, "expire");
         if (jexpire && jexpire->type == cJSON_Number) {
             tls->expire_us = (time_t) jexpire->valuedouble * 1000000LL;
         } else {
@@ -469,18 +474,20 @@ ej_get_contest_list(struct EjFuseState *ejs)
     }
 
     /*
->{
+{
   "ok": true,
-  "contests": [
-    {
-      "id": 2,
-      "name": "Test contest (Tokens)"
-    },
-    {
-      "id": 3,
-      "name": "Test contest (variants)"
-    }
-  ]
+  "result": {
+    "contests": [
+      {
+        "id": 2,
+        "name": "Test contest (Tokens)"
+      },
+      {
+        "id": 3,
+        "name": "Test contest (variants)"
+      }
+    ]
+  }
 }
      */
 
@@ -489,7 +496,10 @@ ej_get_contest_list(struct EjFuseState *ejs)
         goto invalid_json;
     }
     if (jok->type == cJSON_True) {
-        cJSON *jcontests = cJSON_GetObjectItem(root, "contests");
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+        cJSON *jcontests = cJSON_GetObjectItem(jresult, "contests");
         if (!jcontests || jcontests->type != cJSON_Array) {
             goto invalid_json;
         }
@@ -675,16 +685,18 @@ ejudge_client_enter_contest_request(
     /*
 {
   "ok": true,
-  "contest_id": 2,
-  "session": "2044993ba5cef38e-c0048f20bb50e070",
-  "SID": "2044993ba5cef38e",
-  "EJSID": "c0048f20bb50e070",
-  "expire": 1525894365,
-  "user_id": 2,
-  "user_login": "user01",
-  "user_name": "user01",
-  "cntsreg": {
-    "status": "ok"
+  "result": {
+    "session": "8d17dfe31ca46bc9-a312d850aecb7000",
+    "SID": "8d17dfe31ca46bc9",
+    "EJSID": "a312d850aecb7000",
+    "contest_id": 3,
+    "expire": 1526030072,
+    "user_id": 2,
+    "user_login": "user01",
+    "user_name": "user01",
+    "cntsreg": {
+      "status": "ok"
+    }
   }
 }
      */
@@ -694,19 +706,22 @@ ejudge_client_enter_contest_request(
         goto invalid_json;
     }
     if (jok->type == cJSON_True) {
-        cJSON *jsession_id = cJSON_GetObjectItem(root, "SID");
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+        cJSON *jsession_id = cJSON_GetObjectItem(jresult, "SID");
         if (jsession_id && jsession_id->type == cJSON_String) {
             ecc->session_id = strdup(jsession_id->valuestring);
         } else {
             goto invalid_json;
         }
-        cJSON *jclient_key = cJSON_GetObjectItem(root, "EJSID");
+        cJSON *jclient_key = cJSON_GetObjectItem(jresult, "EJSID");
         if (jclient_key && jclient_key->type == cJSON_String) {
             ecc->client_key = strdup(jclient_key->valuestring);
         } else {
             goto invalid_json;
         }
-        cJSON *jexpire = cJSON_GetObjectItem(root, "expire");
+        cJSON *jexpire = cJSON_GetObjectItem(jresult, "expire");
         if (jexpire && jexpire->type == cJSON_Number) {
             ecc->expire_us = (time_t) jexpire->valuedouble * 1000000LL;
         } else {
@@ -871,7 +886,8 @@ ejudge_client_contest_info_request(
     }
 
     if (jok->type == cJSON_True) {
-        eci->info_json = strdup(resp_s);
+        eci->info_json_text = strdup(resp_s);
+        eci->info_json_size = strlen(resp_s);
     /*
 
         cJSON *jsession_id = cJSON_GetObjectItem(root, "SID");
@@ -1044,7 +1060,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
     }
     const char *p2 = strchr(p1 + 1, '/');
     if (!p2) {
-        if (!strcmp(p1 + 1, "INFO")) {
+        if (!strcmp(p1 + 1, "INFO") || !strcmp(p1 + 1, "info.json")) {
+            rq->file_name = p1 + 1;
             contest_session_maybe_update(rq->ejs, rq->ecs);
             contest_info_maybe_update(rq->ejs, rq->ecs);
             rq->ops = &ejfuse_contest_info_operations;

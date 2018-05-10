@@ -127,6 +127,9 @@ ejf_contest_readdir(
     snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "INFO");
     es.st_ino = get_inode(ejs, entry_path);
     filler(buf, "INFO", &es, 0);
+    snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "info.json");
+    es.st_ino = get_inode(ejs, entry_path);
+    filler(buf, "info.json", &es, 0);
     snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "LOG");
     es.st_ino = get_inode(ejs, entry_path);
     filler(buf, "LOG", &es, 0);

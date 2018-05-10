@@ -16,7 +16,7 @@ ejf_contest_problems_getattr(struct EjFuseRequest *efr, const char *path, struct
     unsigned char fullpath[PATH_MAX];
 
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
-    if (!eci || !eci->ok || !eci->info_json) {
+    if (!eci || !eci->ok) {
         contest_info_read_unlock(eci);
         goto done;
     }
