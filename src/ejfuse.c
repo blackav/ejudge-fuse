@@ -888,27 +888,43 @@ ejudge_client_contest_info_request(
     if (jok->type == cJSON_True) {
         eci->info_json_text = strdup(resp_s);
         eci->info_json_size = strlen(resp_s);
-    /*
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
-        cJSON *jsession_id = cJSON_GetObjectItem(root, "SID");
-        if (jsession_id && jsession_id->type == cJSON_String) {
-            ecc->session_id = strdup(jsession_id->valuestring);
-        } else {
-            goto invalid_json;
+        cJSON *jproblems = cJSON_GetObjectItem(jresult, "problems");
+        if (jproblems) {
+            if (jproblems->type != cJSON_Array) goto invalid_json;
         }
-        cJSON *jclient_key = cJSON_GetObjectItem(root, "EJSID");
-        if (jclient_key && jclient_key->type == cJSON_String) {
-            ecc->client_key = strdup(jclient_key->valuestring);
-        } else {
-            goto invalid_json;
+        int prob_count = cJSON_GetArraySize(jproblems);
+        int max_prob_id = 0;
+        for (int i = 0; i < prob_count; ++i) {
+            cJSON *jp = cJSON_GetArrayItem(jproblems, i);
+            if (!jp || jp->type != cJSON_Object) goto invalid_json;
+            cJSON *jid = cJSON_GetObjectItem(jp, "id");
+            if (!jid || jid->type != cJSON_Number) goto invalid_json;
+            int id = jid->valueint;
+            if (id <= 0 || id > 10000) goto invalid_json;
+            if (id > max_prob_id) max_prob_id = id;
         }
-        cJSON *jexpire = cJSON_GetObjectItem(root, "expire");
-        if (jexpire && jexpire->type == cJSON_Number) {
-            ecc->expire_us = (time_t) jexpire->valuedouble * 1000000LL;
-        } else {
-            goto invalid_json;
+        if (max_prob_id > 0) {
+            eci->prob_size = max_prob_id + 1;
+            eci->probs = calloc(eci->prob_size, sizeof(eci->probs[0]));
         }
-    */
+        for (int i = 0; i < prob_count; ++i) {
+            cJSON *jp = cJSON_GetArrayItem(jproblems, i);
+            cJSON *jid = cJSON_GetObjectItem(jp, "id");
+            int id = jid->valueint;
+            struct EjContestProblem *ecp = contest_problem_create(id);
+            eci->probs[id] = ecp;
+            cJSON *jshort_name = cJSON_GetObjectItem(jp, "short_name");
+            if (!jshort_name || jshort_name->type != cJSON_String) goto invalid_json;
+            ecp->short_name = strdup(jshort_name->valuestring);
+            cJSON *jlong_name = cJSON_GetObjectItem(jp, "long_name");
+            if (jlong_name) {
+                if (jlong_name->type != cJSON_String) goto invalid_json;
+                ecp->long_name = strdup(jlong_name->valuestring);
+            }
+        }
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
         goto failed;

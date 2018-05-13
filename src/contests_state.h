@@ -16,6 +16,13 @@ struct EjContestSession
     long long expire_us;
 };
 
+struct EjContestProblem
+{
+    int id;
+    unsigned char *short_name;
+    unsigned char *long_name;
+};
+
 struct EjContestInfo
 {
     _Atomic int reader_count;
@@ -27,6 +34,9 @@ struct EjContestInfo
 
     unsigned char *info_json_text;
     size_t info_json_size;
+
+    int prob_size;
+    struct EjContestProblem **probs;
 };
 
 struct EjContestLog
@@ -36,6 +46,13 @@ struct EjContestLog
     size_t size;
     unsigned char *text;
 };
+
+struct EjProblemState
+{
+    int prob_id;
+};
+
+struct EjProblemStates;
 
 struct EjContestState
 {
@@ -52,6 +69,9 @@ struct EjContestState
     _Atomic int session_guard;
     struct EjContestSession * _Atomic session;
     _Atomic _Bool session_update;
+
+    // PIMPL pointer to the problem list
+    struct EjProblemStates *prob_states;
 };
 
 struct EjContestsState;
@@ -78,9 +98,19 @@ void contest_session_read_unlock(struct EjContestSession *ecc);
 int contest_session_try_write_lock(struct EjContestState *ecs);
 void contest_session_set(struct EjContestState *ecs, struct EjContestSession *ecc);
 
+struct EjContestProblem *contest_problem_create(int prob_id);
+void contest_problem_free(struct EjContestProblem *ecp);
+
 struct EjContestInfo *contest_info_create(int cnts_id);
 void contest_info_free(struct EjContestInfo *eci);
 struct EjContestInfo *contest_info_read_lock(struct EjContestState *ecs);
 void contest_info_read_unlock(struct EjContestInfo *eci);
 int contest_info_try_write_lock(struct EjContestState *ecs);
 void contest_info_set(struct EjContestState *ecs, struct EjContestInfo *ecd);
+
+struct EjProblemStates *problem_states_create(void);
+void problem_states_free(struct EjProblemStates *epss);
+struct EjProblemState *problem_states_get(struct EjProblemStates *epss, int prob_id);
+
+struct EjProblemState *problem_state_create(int prob_id);
+void problem_state_free(struct EjProblemState *eps);

@@ -14,6 +14,14 @@ struct EjContestsState
     struct EjContestState **entries;
 };
 
+struct EjProblemStates
+{
+    pthread_rwlock_t rwl;
+
+    int size;
+    struct EjProblemState **entries;
+};
+
 struct EjContestSession *
 contest_session_create(int cnts_id)
 {
@@ -30,6 +38,24 @@ contest_session_free(struct EjContestSession *ecc)
     }
 }
 
+struct EjContestProblem *
+contest_problem_create(int prob_id)
+{
+    struct EjContestProblem *ecp = calloc(1, sizeof(*ecp));
+    ecp->id = prob_id;
+    return ecp;
+}
+
+void
+contest_problem_free(struct EjContestProblem *ecp)
+{
+    if (ecp) {
+        free(ecp->short_name);
+        free(ecp->long_name);
+        free(ecp);
+    }
+}
+
 struct EjContestInfo *
 contest_info_create(int cnts_id)
 {
@@ -43,6 +69,10 @@ contest_info_free(struct EjContestInfo *eci)
 {
     if (eci) {
         free(eci->log_s);
+        for (int i = 0; i < eci->prob_size; ++i) {
+            contest_problem_free(eci->probs[i]);
+        }
+        free(eci->probs);
         free(eci);
     }
 }
@@ -75,6 +105,7 @@ contest_state_create(int cnts_id)
     pthread_mutex_init(&ecs->log_mutex, NULL);
     atomic_store_explicit(&ecs->log, contest_log_create(""), memory_order_relaxed);
     atomic_store_explicit(&ecs->session, contest_session_create(cnts_id), memory_order_relaxed);
+    ecs->prob_states = problem_states_create();
     return ecs;
 }
 
@@ -86,6 +117,7 @@ contest_state_free(struct EjContestState *ecs)
         contest_log_free(ecs->log);
         pthread_mutex_destroy(&ecs->log_mutex);
         contest_session_free(ecs->session);
+        problem_states_free(ecs->prob_states);
         free(ecs);
     }
 }
@@ -334,5 +366,86 @@ contest_session_set(struct EjContestState *ecs, struct EjContestSession *ecc)
             expected = 0;
         }
         contest_session_free(old);
+    }
+}
+
+struct EjProblemStates *
+problem_states_create(void)
+{
+    struct EjProblemStates *epss = calloc(1, sizeof(*epss));
+    pthread_rwlock_init(&epss->rwl, NULL);
+    return epss;
+}
+
+void
+problem_states_free(struct EjProblemStates *epss)
+{
+    if (epss) {
+        pthread_rwlock_destroy(&epss->rwl);
+        free(epss);
+    }
+}
+
+struct EjProblemState *
+problem_states_get(struct EjProblemStates *epss, int prob_id)
+{
+    struct EjProblemState *retval = NULL;
+    if (prob_id <= 0 || prob_id > 10000) return NULL;
+
+    pthread_rwlock_rdlock(&epss->rwl);
+    if (prob_id < epss->size) {
+        retval = epss->entries[prob_id];
+    }
+    pthread_rwlock_unlock(&epss->rwl);
+    if (retval) return retval;
+
+    pthread_rwlock_wrlock(&epss->rwl);
+    if (prob_id >= epss->size) {
+        int nz = epss->size * 2;
+        if (!nz) nz = 16;
+        while (nz <= prob_id) nz *= 2;
+        struct EjProblemState **ee = calloc(nz, sizeof(*ee));
+        if (epss->size > 0) {
+            memcpy(ee, epss->entries, epss->size * sizeof(ee[0]));
+        }
+        free(epss->entries);
+        epss->size = nz;
+        epss->entries = ee;
+    }
+    retval = epss->entries[prob_id];
+    if (!retval) {
+        retval = epss->entries[prob_id] = problem_state_create(prob_id);
+    }
+    pthread_rwlock_unlock(&epss->rwl);
+
+    return retval;
+}
+
+struct EjProblemState *
+problem_states_try(struct EjProblemStates *epss, int prob_id)
+{
+    struct EjProblemState *retval = NULL;
+    pthread_rwlock_rdlock(&epss->rwl);
+    if (prob_id > 0 && prob_id < epss->size) {
+        retval = epss->entries[prob_id];
+    }
+    pthread_rwlock_unlock(&epss->rwl);
+
+    return retval;
+}
+
+struct EjProblemState *
+problem_state_create(int prob_id)
+{
+    struct EjProblemState *eps = calloc(1, sizeof(*eps));
+    eps->prob_id = prob_id;
+    return eps;
+}
+
+void
+problem_state_free(struct EjProblemState *eps)
+{
+    if (eps) {
+        free(eps);
     }
 }
