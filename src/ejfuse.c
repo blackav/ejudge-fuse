@@ -21,11 +21,14 @@
 #include "ops_contest_log.h"
 #include "ops_fuse.h"
 #include "ops_cnts_probs.h"
+#include "ops_cnts_prob_dir.h"
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
 
 #include <curl/curl.h>
+
+enum { MAX_PROB_SHORT_NAME_SIZE = 32 };
 
 int
 ejf_generic_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *stb, struct fuse_file_info *ffi)
@@ -1094,6 +1097,62 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
             return 0;
         }
         return -ENOENT;
+    }
+    contest_session_maybe_update(rq->ejs, rq->ecs);
+    contest_info_maybe_update(rq->ejs, rq->ecs);
+    // next component: [p1 + 1, p2)
+    // check for problems
+    if (p2 - p1 - 1 != 8 || memcmp(p1 + 1, "problems", 8)) {
+        // ENOENT or ENOTDIR, choose one
+        return -ENOENT;
+    }
+    const char *p3 = strchr(p2 + 1, '/');
+    if (!p3) {
+        // problem directory
+        const char *comma = strchr(p2 + 1, ',');
+        unsigned char prob_name_buf[64];
+        int len = 0;
+        if (comma) {
+            len = comma - p2 - 1;
+        } else {
+            len = strlen(p2 + 1);
+        }
+        if (len >= MAX_PROB_SHORT_NAME_SIZE) {
+            return -ENOENT;
+        }
+        memcpy(prob_name_buf, p2 + 1, len);
+        prob_name_buf[len] = 0;
+
+        struct EjContestProblem *ecp = NULL;
+        struct EjContestInfo *eci = contest_info_read_lock(rq->ecs);
+        for (int prob_id = 1; prob_id < eci->prob_size; ++prob_id) {
+            struct EjContestProblem *tmp = eci->probs[prob_id];
+            if (tmp && tmp->short_name && !strcmp(prob_name_buf, tmp->short_name)) {
+                ecp = tmp;
+                break;
+            }
+        }
+        if (ecp) {
+            rq->prob_id = ecp->id;
+            contest_info_read_unlock(eci);
+
+            // FIXME: update problem state
+            rq->ops = &ejfuse_contest_problem_operations;
+            return 0;
+        }
+        errno = 0;
+        char *eptr = NULL;
+        long val = strtol(prob_name_buf, &eptr, 10);
+        if (*eptr || errno || (unsigned char *) eptr == prob_name_buf || (int) val != val || val <= 0 || val > eci->prob_size || !eci->probs[val]) {
+            contest_info_read_unlock(eci);
+            return -ENOENT;
+        }
+        rq->prob_id = val;
+        contest_info_read_unlock(eci);
+
+        // FIXME: update problem state
+        rq->ops = &ejfuse_contest_problem_operations;
+        return 0;
     }
 
     return -ENOENT;

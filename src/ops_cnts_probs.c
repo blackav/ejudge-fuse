@@ -149,7 +149,7 @@ ejf_contest_problems_readdir(
     return 0;
 }
 
-// generic operations
+// contest problems directory operations
 const struct EjFuseOperations ejfuse_contest_problems_operations =
 {
     ejf_contest_problems_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
