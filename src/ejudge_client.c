@@ -417,7 +417,10 @@ ejudge_client_problem_info_request(
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->effective_time = jj->valueint;
         }
-
+        if ((jj = cJSON_GetObjectItem(js, "est_stmt_size"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            epi->est_stmt_size = jj->valueint;
+        }
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
         goto failed;
