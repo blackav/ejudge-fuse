@@ -77,6 +77,7 @@ struct EjFuseRequest
     struct EjContestState *ecs;
     const unsigned char *file_name;
     int prob_id;
+    struct EjProblemState *eps;
 };
 
 struct EjFuseRequest;
@@ -137,5 +138,12 @@ void contest_list_read_unlock(struct EjContestList *contests);
 
 struct EjContestListItem *contest_list_find(const struct EjContestList *contests, int cnts_id);
 
+struct EjFuseState;
+struct EjContestState;
+struct EjProblemState;
+void problem_info_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        struct EjProblemState *eps);
 
 

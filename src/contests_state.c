@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <stdio.h>
 
 struct EjContestsState
 {
@@ -195,6 +196,23 @@ contests_state_get(struct EjContestsState *ecss, int cnts_id)
     }
     pthread_rwlock_unlock(&ecss->rwl);
     return retval;
+}
+
+// return false if there's no session and true if session valid
+int
+contest_state_copy_session(struct EjContestState *ecs, struct EjSessionValue *esv)
+{
+    esv->ok = 0;
+    struct EjContestSession *ecc = contest_session_read_lock(ecs);
+    if (!ecc || !ecc->ok) {
+        contest_session_read_unlock(ecc);
+        return 0;
+    }
+    esv->ok = 1;
+    snprintf(esv->session_id, sizeof(esv->session_id), "%s", ecc->session_id);
+    snprintf(esv->client_key, sizeof(esv->client_key), "%s", ecc->client_key);
+    contest_session_read_unlock(ecc);
+    return 1;
 }
 
 struct EjContestInfo *
@@ -447,5 +465,79 @@ problem_state_free(struct EjProblemState *eps)
 {
     if (eps) {
         free(eps);
+    }
+}
+
+struct EjProblemInfo *
+problem_info_create(int prob_id)
+{
+    struct EjProblemInfo *epi = calloc(1, sizeof(*epi));
+    epi->acm_run_penalty = 20;
+    epi->test_score = 1;
+    epi->best_run = -1;
+    return epi;
+}
+
+void
+problem_info_free(struct EjProblemInfo *epi)
+{
+    if (epi) {
+        free(epi->info_json_text);
+        free(epi->short_name);
+        free(epi->long_name);
+        free(epi->stand_name);
+        free(epi->stand_column);
+        free(epi->group_name);
+        free(epi->input_file);
+        free(epi->output_file);
+        free(epi->ok_status);
+        free(epi->compilers);
+        free(epi->log_s);
+        free(epi);
+    }
+}
+
+struct EjProblemInfo *
+problem_info_read_lock(struct EjProblemState *eps)
+{
+    atomic_fetch_add_explicit(&eps->info_guard, 1, memory_order_acquire);
+    struct EjProblemInfo *epi = atomic_load_explicit(&eps->info, memory_order_relaxed);
+    if (epi) {
+        atomic_fetch_add_explicit(&epi->reader_count, 1, memory_order_relaxed);
+    }
+    atomic_fetch_sub_explicit(&eps->info_guard, 1, memory_order_release);
+    return epi;
+}
+
+void
+problem_info_read_unlock(struct EjProblemInfo *epi)
+{
+    if (epi) {
+        atomic_fetch_sub_explicit(&epi->reader_count, 1, memory_order_relaxed);
+    }
+}
+
+int
+problem_info_try_write_lock(struct EjProblemState *eps)
+{
+    return atomic_exchange_explicit(&eps->info_update, 1, memory_order_acquire);
+}
+
+void
+problem_info_set(struct EjProblemState *eps, struct EjProblemInfo *epi)
+{
+    struct EjProblemInfo *old = atomic_exchange_explicit(&eps->info, epi, memory_order_acquire);
+    int expected = 0;
+    while (!atomic_compare_exchange_weak_explicit(&eps->info_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+        expected = 0;
+    }
+    atomic_store_explicit(&eps->info_update, 0, memory_order_release);
+    if (old) {
+        expected = 0;
+        while (!atomic_compare_exchange_weak_explicit(&old->reader_count, &expected, 0, memory_order_release, memory_order_acquire)) {
+            sched_yield();
+            expected = 0;
+        }
+        problem_info_free(old);
     }
 }

@@ -22,6 +22,8 @@
 #include "ops_fuse.h"
 #include "ops_cnts_probs.h"
 #include "ops_cnts_prob_dir.h"
+#include "ops_cnts_prob_files.h"
+#include "ejudge_client.h"
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -974,20 +976,11 @@ ejudge_client_contest_info(struct EjFuseState *ejs, struct EjContestState *ecs)
     int already = contest_info_try_write_lock(ecs);
     if (already) return;
 
-    struct EjContestSession *ecc = contest_session_read_lock(ecs);
-    if (!ecc || !ecc->ok) {
-        contest_session_read_unlock(ecc);
-        return;
-    }
-
-    unsigned char session_id[128];
-    unsigned char client_key[128];
-    snprintf(session_id, sizeof(session_id), "%s", ecc->session_id);
-    snprintf(client_key, sizeof(client_key), "%s", ecc->client_key);
-    contest_session_read_unlock(ecc);
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
 
     struct EjContestInfo *eci = contest_info_create(ecs->cnts_id);
-    ejudge_client_contest_info_request(ejs, ecs, eci, session_id, client_key);
+    ejudge_client_contest_info_request(ejs, ecs, eci, esv.session_id, esv.client_key);
     contest_info_set(ecs, eci);
 }
 
@@ -1013,6 +1006,35 @@ contest_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs)
     ejudge_client_contest_info(ejs, ecs);
 }
 
+void
+problem_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, struct EjProblemState *eps)
+{
+    int update_needed = 0;
+    struct EjProblemInfo *epi = problem_info_read_lock(eps);
+    if (epi && epi->ok) {
+        if (epi->recheck_time_us > 0 && ejs->current_time_us >= epi->recheck_time_us) {
+            update_needed = 1;
+        }
+    } else {
+        update_needed = 1;
+        if (epi && epi->recheck_time_us > 0 && ejs->current_time_us < epi->recheck_time_us) {
+            update_needed = 0;
+        }
+    }
+    problem_info_read_unlock(epi);
+    if (!update_needed) return;
+
+    int already = problem_info_try_write_lock(eps);
+    if (already) return;
+
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
+
+    epi = problem_info_create(eps->prob_id);
+    ejudge_client_problem_info_request(ejs, ecs, epi, &esv, eps->prob_id);
+    problem_info_set(eps, epi);
+}
+
 unsigned
 get_inode(struct EjFuseState *ejs, const char *path)
 {
@@ -1025,6 +1047,33 @@ get_inode(struct EjFuseState *ejs, const char *path)
     SHA256_Final(digest, &ctx);
 
     return inode_hash_insert(ejs->inode_hash, digest)->inode;
+}
+
+static int
+find_problem(struct EjFuseRequest *efr, const unsigned char *name_or_id)
+{
+    struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
+    for (int prob_id = 1; prob_id < eci->prob_size; ++prob_id) {
+        struct EjContestProblem *tmp = eci->probs[prob_id];
+        if (tmp && tmp->short_name && !strcmp(name_or_id, tmp->short_name)) {
+            efr->prob_id = prob_id;
+            contest_info_read_unlock(eci);
+            efr->eps = problem_states_get(efr->ecs->prob_states, efr->prob_id);
+            return prob_id;
+        }
+    }
+
+    errno = 0;
+    char *eptr = NULL;
+    long val = strtol(name_or_id, &eptr, 10);
+    if (*eptr || errno || (unsigned char *) eptr == name_or_id || (int) val != val || val <= 0 || val > eci->prob_size || !eci->probs[val]) {
+        contest_info_read_unlock(eci);
+        return -ENOENT;
+    }
+    efr->prob_id = val;
+    contest_info_read_unlock(eci);
+    efr->eps = problem_states_get(efr->ecs->prob_states, efr->prob_id);
+    return val;
 }
 
 int
@@ -1122,37 +1171,40 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         }
         memcpy(prob_name_buf, p2 + 1, len);
         prob_name_buf[len] = 0;
-
-        struct EjContestProblem *ecp = NULL;
-        struct EjContestInfo *eci = contest_info_read_lock(rq->ecs);
-        for (int prob_id = 1; prob_id < eci->prob_size; ++prob_id) {
-            struct EjContestProblem *tmp = eci->probs[prob_id];
-            if (tmp && tmp->short_name && !strcmp(prob_name_buf, tmp->short_name)) {
-                ecp = tmp;
-                break;
-            }
-        }
-        if (ecp) {
-            rq->prob_id = ecp->id;
-            contest_info_read_unlock(eci);
-
-            // FIXME: update problem state
-            rq->ops = &ejfuse_contest_problem_operations;
-            return 0;
-        }
-        errno = 0;
-        char *eptr = NULL;
-        long val = strtol(prob_name_buf, &eptr, 10);
-        if (*eptr || errno || (unsigned char *) eptr == prob_name_buf || (int) val != val || val <= 0 || val > eci->prob_size || !eci->probs[val]) {
-            contest_info_read_unlock(eci);
+        if (find_problem(rq, prob_name_buf) < 0) {
             return -ENOENT;
         }
-        rq->prob_id = val;
-        contest_info_read_unlock(eci);
-
-        // FIXME: update problem state
         rq->ops = &ejfuse_contest_problem_operations;
         return 0;
+    } else {
+        const char *comma = strchr(p2 + 1, ',');
+        unsigned char prob_name_buf[64];
+        int len = 0;
+        if (comma && comma < p3) {
+            len = comma - p2 - 1;
+        } else {
+            len = p3 - p2 - 1;
+        }
+        if (len >= MAX_PROB_SHORT_NAME_SIZE) {
+            return -ENOENT;
+        }
+        memcpy(prob_name_buf, p2 + 1, len);
+        prob_name_buf[len] = 0;
+        if (find_problem(rq, prob_name_buf) < 0) {
+            return -ENOENT;
+        }
+        problem_info_maybe_update(rq->ejs, rq->ecs, rq->eps);
+    }
+    const char *p4 = strchr(p3 + 1, '/');
+    if (!p4) {
+        if (!strcmp(p3 + 1, "INFO") || !strcmp(p3 + 1, "info.json")
+            || !strcmp(p3 + 1, "statement.html")) {
+            rq->file_name = p3 + 1;
+        } else if (!strcmp(p3 + 1, "runs")) {
+        } else if (!strcmp(p3 + 1, "submit")) {
+        } else {
+            return -ENOENT;
+        }
     }
 
     return -ENOENT;

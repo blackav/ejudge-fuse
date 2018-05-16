@@ -2,6 +2,13 @@
 
 #include <pthread.h>
 
+struct EjSessionValue
+{
+    _Bool ok;
+    unsigned char session_id[128];
+    unsigned char client_key[128];
+};
+
 struct EjContestSession
 {
     _Atomic int reader_count;
@@ -47,9 +54,116 @@ struct EjContestLog
     unsigned char *text;
 };
 
+struct EjProblemInfo
+{
+    _Atomic int reader_count;
+
+    int prob_id;
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+
+    unsigned char *info_json_text;
+    size_t info_json_size;
+
+    time_t server_time;
+    unsigned char *short_name;
+    unsigned char *long_name;
+    int prob_type;
+    int full_score;
+    int full_user_score;
+    int min_score_1;
+    int min_score_2;
+    unsigned char use_stdin;
+    unsigned char use_stdout;
+    unsigned char combined_stdin;
+    unsigned char combined_stdout;
+    unsigned char use_ac_not_ok;
+    unsigned char ignore_prev_ac;
+    unsigned char team_enable_rep_view;
+    unsigned char team_enable_ce_view;
+    unsigned char ignore_compile_errors;
+    unsigned char disable_user_submit;
+    unsigned char disable_tab;
+    unsigned char enable_submit_after_reject;
+    unsigned char enable_tokens;
+    unsigned char tokens_for_user_ac;
+    unsigned char disable_submit_after_ok;
+    unsigned char disable_auto_testing;
+    unsigned char disable_testing;
+    unsigned char enable_compilation;
+    unsigned char skip_testing;
+    unsigned char hidden;
+    unsigned char stand_hide_time;
+    unsigned char stand_ignore_score;
+    unsigned char stand_last_column;
+    unsigned char disable_stderr;
+
+    int real_time_limit_ms;
+    int time_limit_ms;
+    int acm_run_penalty;
+    int test_score;
+    int run_penalty;
+    int disqualified_penalty;
+    int compile_error_penalty;
+    int tests_to_accept;
+    int min_tests_to_accept;
+    int score_multiplier;
+    int max_user_run_count;
+
+    unsigned char *stand_name;
+    unsigned char *stand_column;
+    unsigned char *group_name;
+    unsigned char *input_file;
+    unsigned char *output_file;
+    unsigned char *ok_status;
+
+    time_t start_date;
+
+    int compilers_size;
+    unsigned char *compilers;
+
+    unsigned long long max_vm_size;
+    unsigned long long max_stack_size;
+
+    unsigned char is_statement_avaiable;
+
+    unsigned char is_viewable;
+    unsigned char is_submittable;
+    unsigned char is_tabable;
+    unsigned char is_solved;
+    unsigned char is_accepted;
+    unsigned char is_pending;
+    unsigned char is_pending_review;
+    unsigned char is_transient;
+    unsigned char is_last_untokenized;
+    unsigned char is_marked;
+    unsigned char is_autook;
+    unsigned char is_rejected;
+    unsigned char is_eff_time_needed;
+
+    int best_run;
+    int attempts;
+    int disqualified;
+    int ce_attempts;
+    int best_score;
+    int prev_successes;
+    int all_attempts;
+    int eff_attempts;
+    int token_count;
+
+    time_t deadline;
+    time_t effective_time;
+};
+
+// problem state is a container for updateable data structures
 struct EjProblemState
 {
     int prob_id;
+
+    _Atomic int info_guard;
+    struct EjProblemInfo *info;
+    _Atomic _Bool info_update;
 };
 
 struct EjProblemStates;
@@ -97,6 +211,7 @@ struct EjContestSession *contest_session_read_lock(struct EjContestState *ecs);
 void contest_session_read_unlock(struct EjContestSession *ecc);
 int contest_session_try_write_lock(struct EjContestState *ecs);
 void contest_session_set(struct EjContestState *ecs, struct EjContestSession *ecc);
+int contest_state_copy_session(struct EjContestState *ecs, struct EjSessionValue *esv);
 
 struct EjContestProblem *contest_problem_create(int prob_id);
 void contest_problem_free(struct EjContestProblem *ecp);
@@ -114,3 +229,10 @@ struct EjProblemState *problem_states_get(struct EjProblemStates *epss, int prob
 
 struct EjProblemState *problem_state_create(int prob_id);
 void problem_state_free(struct EjProblemState *eps);
+
+struct EjProblemInfo *problem_info_create(int prob_id);
+void problem_info_free(struct EjProblemInfo *epi);
+struct EjProblemInfo *problem_info_read_lock(struct EjProblemState *eps);
+void problem_info_read_unlock(struct EjProblemInfo *epi);
+int problem_info_try_write_lock(struct EjProblemState *eps);
+void problem_info_set(struct EjProblemState *ecs, struct EjProblemInfo *epi);
