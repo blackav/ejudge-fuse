@@ -335,6 +335,10 @@ ejudge_client_problem_info_request(
             if (errno || *eptr || jj->valuestring == eptr) goto invalid_json;
             epi->max_stack_size = val;
         }
+        if ((jj = cJSON_GetObjectItem(jp, "est_stmt_size"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            epi->est_stmt_size = jj->valueint;
+        }
 
         cJSON *js = cJSON_GetObjectItem(jresult, "problem_status");
         if ((jj = cJSON_GetObjectItem(js, "is_viewable"))) {
@@ -416,10 +420,6 @@ ejudge_client_problem_info_request(
         if ((jj = cJSON_GetObjectItem(js, "effective_time"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->effective_time = jj->valueint;
-        }
-        if ((jj = cJSON_GetObjectItem(js, "est_stmt_size"))) {
-            if (jj->type != cJSON_Number) goto invalid_json;
-            epi->est_stmt_size = jj->valueint;
         }
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
