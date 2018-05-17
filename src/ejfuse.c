@@ -1035,6 +1035,42 @@ problem_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, s
     problem_info_set(eps, epi);
 }
 
+void
+problem_statement_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, struct EjProblemState *eps)
+{
+    struct EjProblemInfo *epi = problem_info_read_lock(eps);
+    if (!epi || !epi->ok || !epi->is_viewable || !epi->is_statement_avaiable) {
+        problem_info_read_unlock(epi);
+        return;
+    }
+    problem_info_read_unlock(epi);
+
+    int update_needed = 0;
+    struct EjProblemStatement *eph = problem_statement_read_lock(eps);
+    if (eph && eph->ok) {
+        if (eph->recheck_time_us > 0 && ejs->current_time_us >= eph->recheck_time_us) {
+            update_needed = 1;
+        }
+    } else {
+        update_needed = 1;
+        if (eph && eph->recheck_time_us > 0 && ejs->current_time_us < eph->recheck_time_us) {
+            update_needed = 0;
+        }
+    }
+    problem_statement_read_unlock(eph);
+    if (!update_needed) return;
+
+    int already = problem_statement_try_write_lock(eps);
+    if (already) return;
+
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
+
+    eph = problem_statement_create(eps->prob_id);
+    ejudge_client_problem_statement_request(ejs, ecs, eph, &esv, eps->prob_id);
+    problem_statement_set(eps, eph);
+}
+
 unsigned
 get_inode(struct EjFuseState *ejs, const char *path)
 {
@@ -1197,9 +1233,12 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
     }
     const char *p4 = strchr(p3 + 1, '/');
     if (!p4) {
-        if (!strcmp(p3 + 1, "INFO") || !strcmp(p3 + 1, "info.json")
-            || !strcmp(p3 + 1, "statement.html")) {
+        if (!strcmp(p3 + 1, FN_CONTEST_PROBLEM_INFO)
+            || !strcmp(p3 + 1, FN_CONTEST_PROBLEM_INFO_JSON)
+            || !strcmp(p3 + 1, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
             rq->file_name = p3 + 1;
+            rq->ops = &ejfuse_contest_problem_files_operations;
+            return 0;
         } else if (!strcmp(p3 + 1, "runs")) {
         } else if (!strcmp(p3 + 1, "submit")) {
         } else {

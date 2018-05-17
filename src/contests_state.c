@@ -541,3 +541,66 @@ problem_info_set(struct EjProblemState *eps, struct EjProblemInfo *epi)
         problem_info_free(old);
     }
 }
+
+struct EjProblemStatement *
+problem_statement_create(int prob_id)
+{
+    struct EjProblemStatement *eph = calloc(1, sizeof(*eph));
+    eph->prob_id = prob_id;
+    return eph;
+}
+
+void
+problem_statement_free(struct EjProblemStatement *eph)
+{
+    if (eph) {
+        free(eph->log_s);
+        free(eph->stmt_text);
+        free(eph);
+    }
+}
+
+struct EjProblemStatement *
+problem_statement_read_lock(struct EjProblemState *eps)
+{
+    atomic_fetch_add_explicit(&eps->stmt_guard, 1, memory_order_acquire);
+    struct EjProblemStatement *eph = atomic_load_explicit(&eps->stmt, memory_order_relaxed);
+    if (eph) {
+        atomic_fetch_add_explicit(&eph->reader_count, 1, memory_order_relaxed);
+    }
+    atomic_fetch_sub_explicit(&eps->stmt_guard, 1, memory_order_release);
+    return eph;
+}
+
+void
+problem_statement_read_unlock(struct EjProblemStatement *eph)
+{
+    if (eph) {
+        atomic_fetch_sub_explicit(&eph->reader_count, 1, memory_order_relaxed);
+    }
+}
+
+int
+problem_statement_try_write_lock(struct EjProblemState *eps)
+{
+    return atomic_exchange_explicit(&eps->stmt_update, 1, memory_order_acquire);
+}
+
+void
+problem_statement_set(struct EjProblemState *eps, struct EjProblemStatement *eph)
+{
+    struct EjProblemStatement *old = atomic_exchange_explicit(&eps->stmt, eph, memory_order_acquire);
+    int expected = 0;
+    while (!atomic_compare_exchange_weak_explicit(&eps->stmt_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+        expected = 0;
+    }
+    atomic_store_explicit(&eps->stmt_update, 0, memory_order_release);
+    if (old) {
+        expected = 0;
+        while (!atomic_compare_exchange_weak_explicit(&old->reader_count, &expected, 0, memory_order_release, memory_order_acquire)) {
+            sched_yield();
+            expected = 0;
+        }
+        problem_statement_free(old);
+    }
+}

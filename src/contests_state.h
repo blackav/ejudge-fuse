@@ -154,6 +154,22 @@ struct EjProblemInfo
 
     time_t deadline;
     time_t effective_time;
+
+    // estimate statement size
+    int est_stmt_size;
+};
+
+struct EjProblemStatement
+{
+    _Atomic int reader_count;
+
+    int prob_id;
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+
+    unsigned char *stmt_text;
+    size_t stmt_size;
 };
 
 // problem state is a container for updateable data structures
@@ -164,6 +180,10 @@ struct EjProblemState
     _Atomic int info_guard;
     struct EjProblemInfo *info;
     _Atomic _Bool info_update;
+
+    _Atomic int stmt_guard;
+    struct EjProblemStatement *stmt;
+    _Atomic _Bool stmt_update;
 };
 
 struct EjProblemStates;
@@ -236,3 +256,10 @@ struct EjProblemInfo *problem_info_read_lock(struct EjProblemState *eps);
 void problem_info_read_unlock(struct EjProblemInfo *epi);
 int problem_info_try_write_lock(struct EjProblemState *eps);
 void problem_info_set(struct EjProblemState *ecs, struct EjProblemInfo *epi);
+
+struct EjProblemStatement *problem_statement_create(int prob_id);
+void problem_statement_free(struct EjProblemStatement *eph);
+struct EjProblemStatement *problem_statement_read_lock(struct EjProblemState *eps);
+void problem_statement_read_unlock(struct EjProblemStatement *eph);
+int problem_statement_try_write_lock(struct EjProblemState *eps);
+void problem_statement_set(struct EjProblemState *eps, struct EjProblemStatement *eph);

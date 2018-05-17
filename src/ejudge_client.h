@@ -12,3 +12,12 @@ ejudge_client_problem_info_request(
         struct EjProblemInfo *epi, // output
         const struct EjSessionValue *esv,
         int prob_id);
+
+struct EjProblemStatement;
+void
+ejudge_client_problem_statement_request(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        struct EjProblemStatement *eph, // output
+        const struct EjSessionValue *esv,
+        int prob_id);
