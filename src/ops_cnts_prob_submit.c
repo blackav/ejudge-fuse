@@ -4,9 +4,174 @@
 #include "ops_generic.h"
 #include "contests_state.h"
 
+#include <string.h>
+#include <errno.h>
+#include <limits.h>
+
+static int
+ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
+{
+    struct EjFuseState *ejs = efr->ejs;
+    unsigned char fullpath[PATH_MAX];
+    struct EjProblemInfo *epi = NULL;
+
+    epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+
+    memset(stb, 0, sizeof(*stb));
+    snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
+    stb->st_nlink = 2;
+    stb->st_uid = ejs->owner_uid;
+    stb->st_gid = ejs->owner_gid;
+    stb->st_size = 4096; // ???, but why not?
+    long long current_time_us = ejs->current_time_us;
+    stb->st_atim.tv_sec = current_time_us / 1000000;
+    stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+
+    problem_info_read_unlock(epi);
+    return 0;
+}
+
+static int
+ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
+{
+    struct EjFuseState *ejs = efr->ejs;
+    int retval = -ENOENT;
+    int perms = EJFUSE_DIR_PERMS;
+    mode &= 07;
+
+    struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    problem_info_read_unlock(epi);
+
+    if (ejs->owner_uid == efr->fx->uid) {
+        perms >>= 6;
+    } else if (ejs->owner_gid == efr->fx->gid) {
+        perms >>= 3;
+    } else {
+        // nothing
+    }
+    if (((perms & 07) & mode) == mode) {
+        retval = 0;
+    } else {
+        retval = -EPERM;
+    }
+
+    return retval;
+}
+
+static int
+ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    problem_info_read_unlock(epi);
+    if (efr->ejs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+    return 0;
+}
+
+static int
+ejf_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    return 0;
+}
+
+static int
+ejf_readdir(
+        struct EjFuseRequest *efr,
+        const char *path,
+        void *buf,
+        fuse_fill_dir_t filler,
+        off_t offset,
+        struct fuse_file_info *ffi)
+{
+    struct EjFuseState *ejs = efr->ejs;
+
+    //problem_info_maybe_update(efr->ejs, efr->ecs, efr->eps);
+
+    struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -EIO;
+    }
+
+    unsigned char dot_path[PATH_MAX];
+    snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    struct stat es;
+    memset(&es, 0, sizeof(es));
+    es.st_ino = get_inode(ejs, dot_path);
+    filler(buf, ".", &es, 0);
+
+    unsigned char ddot_path[PATH_MAX];
+    snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    es.st_ino = get_inode(ejs, ddot_path);
+    filler(buf, "..", &es, 0);
+
+    struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
+    if (eci && eci->ok) {
+        if (epi->compilers && epi->compilers_size > 0) {
+            for (int lang_id = 1; lang_id < epi->compilers_size; ++lang_id) {
+                struct EjContestLanguage *ecl = NULL;
+                if (epi->compilers[lang_id] && lang_id < eci->lang_size && (ecl = eci->langs[lang_id])) {
+                    unsigned char entry_path[PATH_MAX];
+                    unsigned char entry_name[PATH_MAX];
+                    snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
+                    es.st_ino = get_inode(ejs, entry_path);
+                    if (ecl->short_name && ecl->short_name[0] && ecl->long_name && ecl->long_name[0]) {
+                        snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
+                    } else if (ecl->short_name && ecl->short_name[0]) {
+                        snprintf(entry_name, sizeof(entry_name), "%s", ecl->short_name);
+                    } else {
+                        snprintf(entry_name, sizeof(entry_name), "%d", lang_id);
+                    }
+                    filler(buf, entry_name, &es, 0);
+                }
+            }
+        } else if (eci->lang_size > 0 && eci->langs) {
+            for (int lang_id = 1; lang_id < eci->lang_size; ++lang_id){
+                struct EjContestLanguage *ecl = eci->langs[lang_id];
+                if (ecl) {
+                    unsigned char entry_path[PATH_MAX];
+                    unsigned char entry_name[PATH_MAX];
+                    snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
+                    es.st_ino = get_inode(ejs, entry_path);
+                    if (ecl->short_name && ecl->short_name[0] && ecl->long_name && ecl->long_name[0]) {
+                        snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
+                    } else if (ecl->short_name && ecl->short_name[0]) {
+                        snprintf(entry_name, sizeof(entry_name), "%s", ecl->short_name);
+                    } else {
+                        snprintf(entry_name, sizeof(entry_name), "%d", lang_id);
+                    }
+                    filler(buf, entry_name, &es, 0);
+                }
+            }
+        }
+    }
+    contest_info_read_unlock(eci);
+    problem_info_read_unlock(epi);
+    return 0;
+}
+
 const struct EjFuseOperations ejfuse_contest_problem_submit_operations =
 {
-    NULL, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
+    ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
     ejf_generic_readlink, //int (*readlink)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_mknod, //int (*mknod)(struct EjFuseRequest *, const char *, mode_t, dev_t);
     ejf_generic_mkdir, //int (*mkdir)(struct EjFuseRequest *, const char *, mode_t);
@@ -29,11 +194,11 @@ const struct EjFuseOperations ejfuse_contest_problem_submit_operations =
     ejf_generic_getxattr, //int (*getxattr)(struct EjFuseRequest *, const char *, const char *, char *, size_t);
     ejf_generic_listxattr, //int (*listxattr)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_removexattr, //int (*removexattr)(struct EjFuseRequest *, const char *, const char *);
-    NULL, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
-    NULL, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_opendir, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
+    ejf_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
-    NULL, //int (*access)(struct EjFuseRequest *, const char *, int);
+    ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
     ejf_generic_create, //int (*create)(struct EjFuseRequest *, const char *, mode_t, struct fuse_file_info *);
     ejf_generic_ftruncate, //int (*ftruncate)(struct EjFuseRequest *, const char *, off_t, struct fuse_file_info *);
     ejf_generic_fgetattr, //int (*fgetattr)(struct EjFuseRequest *, const char *, struct stat *, struct fuse_file_info *);

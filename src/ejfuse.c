@@ -931,6 +931,45 @@ ejudge_client_contest_info_request(
                 ecp->long_name = strdup(jlong_name->valuestring);
             }
         }
+        cJSON *jlangs = cJSON_GetObjectItem(jresult, "compilers");
+        if (jlangs) {
+            if (jlangs->type != cJSON_Array) goto invalid_json;
+            int lang_count = cJSON_GetArraySize(jlangs);
+            int max_lang_id = 0;
+            for (int i = 0; i < lang_count; ++i) {
+                cJSON *jl = cJSON_GetArrayItem(jlangs, i);
+                if (!jl || jl->type != cJSON_Object) goto invalid_json;
+                cJSON *jid = cJSON_GetObjectItem(jl, "id");
+                if (!jid || jid->type != cJSON_Number) goto invalid_json;
+                int id = jid->valueint;
+                if (id <= 0 || id > 10000) goto invalid_json;
+                if (id > max_lang_id) max_lang_id = id;
+            }
+            if (max_lang_id > 0) {
+                eci->lang_size = max_lang_id + 1;
+                eci->langs = calloc(eci->lang_size, sizeof(eci->langs[0]));
+            }
+            for (int i = 0; i < lang_count; ++i) {
+                cJSON *jl = cJSON_GetArrayItem(jlangs, i);
+                cJSON *jid = cJSON_GetObjectItem(jl, "id");
+                int id = jid->valueint;
+                struct EjContestLanguage *ecl = contest_language_create(id);
+                eci->langs[id] = ecl;
+                cJSON *jshort_name = cJSON_GetObjectItem(jl, "short_name");
+                if (!jshort_name || jshort_name->type != cJSON_String) goto invalid_json;
+                ecl->short_name = strdup(jshort_name->valuestring);
+                cJSON *jlong_name = cJSON_GetObjectItem(jl, "long_name");
+                if (jlong_name) {
+                    if (jlong_name->type != cJSON_String) goto invalid_json;
+                    ecl->long_name = strdup(jlong_name->valuestring);
+                }
+                cJSON *jsrc_suffix = cJSON_GetObjectItem(jl, "src_suffix");
+                if (jsrc_suffix) {
+                    if (jsrc_suffix->type != cJSON_String) goto invalid_json;
+                    ecl->src_suffix = strdup(jsrc_suffix->valuestring);
+                }
+            }
+        }
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
         goto failed;

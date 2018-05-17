@@ -57,6 +57,25 @@ contest_problem_free(struct EjContestProblem *ecp)
     }
 }
 
+struct EjContestLanguage *
+contest_language_create(int lang_id)
+{
+    struct EjContestLanguage *ecl = calloc(1, sizeof(*ecl));
+    ecl->id = lang_id;
+    return ecl;
+}
+
+void
+contest_language_free(struct EjContestLanguage *ecl)
+{
+    if (ecl) {
+        free(ecl->short_name);
+        free(ecl->long_name);
+        free(ecl->src_suffix);
+        free(ecl);
+    }
+}
+
 struct EjContestInfo *
 contest_info_create(int cnts_id)
 {
@@ -74,6 +93,10 @@ contest_info_free(struct EjContestInfo *eci)
             contest_problem_free(eci->probs[i]);
         }
         free(eci->probs);
+        for (int i = 0; i < eci->lang_size; ++i) {
+            contest_language_free(eci->langs[i]);
+        }
+        free(eci->langs);
         free(eci);
     }
 }
