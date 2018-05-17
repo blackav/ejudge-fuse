@@ -1242,6 +1242,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
             return 0;
         } else if (!strcmp(p3 + 1, "runs")) {
         } else if (!strcmp(p3 + 1, "submit")) {
+            rq->ops = &ejfuse_contest_problem_submit_operations;
+            return 0;
         } else {
             return -ENOENT;
         }
