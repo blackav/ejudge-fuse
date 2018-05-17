@@ -23,6 +23,7 @@
 #include "ops_cnts_probs.h"
 #include "ops_cnts_prob_dir.h"
 #include "ops_cnts_prob_files.h"
+#include "ops_cnts_prob_submit.h"
 #include "ejudge_client.h"
 
 #define FUSE_USE_VERSION 26
