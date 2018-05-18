@@ -540,7 +540,7 @@ ejudge_client_contest_info(struct EjFuseState *ejs, struct EjContestState *ecs)
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     struct EjContestInfo *eci = contest_info_create(ecs->cnts_id);
-    ejudge_client_contest_info_request(ejs, ecs, eci, esv.session_id, esv.client_key);
+    ejudge_client_contest_info_request(ejs, ecs, esv.session_id, esv.client_key, eci);
     contest_info_set(ecs, eci);
 }
 
