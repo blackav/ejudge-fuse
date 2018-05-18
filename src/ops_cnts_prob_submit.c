@@ -128,8 +128,8 @@ ejf_readdir(
     if (eci && eci->ok) {
         if (epi->compilers && epi->compilers_size > 0) {
             for (int lang_id = 1; lang_id < epi->compilers_size; ++lang_id) {
-                struct EjContestLanguage *ecl = NULL;
-                if (epi->compilers[lang_id] && lang_id < eci->lang_size && (ecl = eci->langs[lang_id])) {
+                struct EjContestCompiler *ecl = NULL;
+                if (epi->compilers[lang_id] && lang_id < eci->compiler_size && (ecl = eci->compilers[lang_id])) {
                     unsigned char entry_path[PATH_MAX];
                     unsigned char entry_name[PATH_MAX];
                     snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
@@ -144,9 +144,9 @@ ejf_readdir(
                     filler(buf, entry_name, &es, 0);
                 }
             }
-        } else if (eci->lang_size > 0 && eci->langs) {
-            for (int lang_id = 1; lang_id < eci->lang_size; ++lang_id){
-                struct EjContestLanguage *ecl = eci->langs[lang_id];
+        } else if (eci->compiler_size > 0 && eci->compilers) {
+            for (int lang_id = 1; lang_id < eci->compiler_size; ++lang_id){
+                struct EjContestCompiler *ecl = eci->compilers[lang_id];
                 if (ecl) {
                     unsigned char entry_path[PATH_MAX];
                     unsigned char entry_name[PATH_MAX];

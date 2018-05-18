@@ -30,7 +30,7 @@ struct EjContestProblem
     unsigned char *long_name;
 };
 
-struct EjContestLanguage
+struct EjContestCompiler
 {
     int id;
     unsigned char *short_name;
@@ -53,8 +53,8 @@ struct EjContestInfo
     int prob_size;
     struct EjContestProblem **probs;
 
-    int lang_size;
-    struct EjContestLanguage **langs;
+    int compiler_size;
+    struct EjContestCompiler **compilers;
 };
 
 struct EjContestLog
@@ -247,8 +247,8 @@ int contest_state_copy_session(struct EjContestState *ecs, struct EjSessionValue
 struct EjContestProblem *contest_problem_create(int prob_id);
 void contest_problem_free(struct EjContestProblem *ecp);
 
-struct EjContestLanguage *contest_language_create(int lang_id);
-void contest_language_free(struct EjContestLanguage *ecl);
+struct EjContestCompiler *contest_language_create(int lang_id);
+void contest_language_free(struct EjContestCompiler *ecl);
 
 struct EjContestInfo *contest_info_create(int cnts_id);
 void contest_info_free(struct EjContestInfo *eci);

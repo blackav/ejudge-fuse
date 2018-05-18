@@ -947,15 +947,15 @@ ejudge_client_contest_info_request(
                 if (id > max_lang_id) max_lang_id = id;
             }
             if (max_lang_id > 0) {
-                eci->lang_size = max_lang_id + 1;
-                eci->langs = calloc(eci->lang_size, sizeof(eci->langs[0]));
+                eci->compiler_size = max_lang_id + 1;
+                eci->compilers = calloc(eci->compiler_size, sizeof(eci->compilers[0]));
             }
             for (int i = 0; i < lang_count; ++i) {
                 cJSON *jl = cJSON_GetArrayItem(jlangs, i);
                 cJSON *jid = cJSON_GetObjectItem(jl, "id");
                 int id = jid->valueint;
-                struct EjContestLanguage *ecl = contest_language_create(id);
-                eci->langs[id] = ecl;
+                struct EjContestCompiler *ecl = contest_language_create(id);
+                eci->compilers[id] = ecl;
                 cJSON *jshort_name = cJSON_GetObjectItem(jl, "short_name");
                 if (!jshort_name || jshort_name->type != cJSON_String) goto invalid_json;
                 ecl->short_name = strdup(jshort_name->valuestring);
