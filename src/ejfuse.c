@@ -25,6 +25,7 @@
 #include "ops_cnts_prob_files.h"
 #include "ops_cnts_prob_submit.h"
 #include "ops_cnts_prob_submit_lang.h"
+#include "ops_cnts_prob_submit_lang_dir.h"
 #include "ejudge_client.h"
 
 #define FUSE_USE_VERSION 26
@@ -718,6 +719,23 @@ ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
         efr->ops = &ejfuse_contest_problem_submit_compiler_operations;
         return 0;
     }
+/*
+ * /<CNTS>/problems/<PROB>/submit/<LANG>/file
+ *                               ^ path
+ *                                      ^ p1
+ */
+    const char *p2 = strchr(p1 + 1, '/');
+    if (!p2) {
+        efr->file_name = p1 + 1;
+        efr->ops = &ejfuse_contest_problem_submit_compiler_dir_operations;
+        return 0;
+    }
+/*
+ * /<CNTS>/problems/<PROB>/submit/<LANG>/file/...
+ *                               ^ path
+ *                                      ^ p1
+ *                                           ^ p2
+ */
     return -ENOENT;
 }
 
