@@ -627,7 +627,7 @@ problem_statement_maybe_update(struct EjFuseState *ejs, struct EjContestState *e
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     eph = problem_statement_create(eps->prob_id);
-    ejudge_client_problem_statement_request(ejs, ecs, eph, &esv, eps->prob_id);
+    ejudge_client_problem_statement_request(ejs, ecs, &esv, eps->prob_id, eph);
     problem_statement_set(eps, eph);
 }
 
