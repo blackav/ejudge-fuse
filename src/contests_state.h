@@ -183,6 +183,13 @@ struct EjProblemStatement
     size_t stmt_size;
 };
 
+struct EjProblemCompilerSubmits
+{
+    int lang_id;
+};
+
+struct EjProblemSubmits;
+
 // problem state is a container for updateable data structures
 struct EjProblemState
 {
@@ -195,6 +202,8 @@ struct EjProblemState
     _Atomic int stmt_guard;
     struct EjProblemStatement *stmt;
     _Atomic _Bool stmt_update;
+
+    struct EjProblemSubmits *submits;
 };
 
 // run state is a container for updateable run structures
@@ -294,3 +303,10 @@ void run_state_free(struct EjRunState *ejr);
 struct EjRunStates *run_states_create(void);
 void run_states_free(struct EjRunStates *ejrs);
 struct EjRunState *run_states_get(struct EjRunStates *erss, int run_id);
+
+struct EjProblemCompilerSubmits *problem_compiler_submits_create(int lang_id);
+void problem_compiler_submits_free(struct EjProblemCompilerSubmits *epcs);
+
+struct EjProblemSubmits *problem_submits_create(void);
+void problem_submits_free(struct EjProblemSubmits *epss);
+struct EjProblemCompilerSubmits *problem_submits_get(struct EjProblemSubmits *epss, int lang_id);

@@ -33,6 +33,16 @@ struct EjRunStates
     struct EjRunState **runs;
 };
 
+struct EjProblemSubmits
+{
+    pthread_rwlock_t rwl;
+
+    // sorted by increasing lang_id
+    int reserved;
+    int size;
+    struct EjProblemCompilerSubmits **submits;
+};
+
 struct EjContestSession *
 contest_session_create(int cnts_id)
 {
@@ -491,6 +501,7 @@ problem_state_create(int prob_id)
 {
     struct EjProblemState *eps = calloc(1, sizeof(*eps));
     eps->prob_id = prob_id;
+    eps->submits = problem_submits_create();
     return eps;
 }
 
@@ -741,4 +752,97 @@ run_states_get(struct EjRunStates *erss, int run_id)
     ers = erss->runs[low] = run_state_create(run_id);
     pthread_rwlock_unlock(&erss->rwl);
     return ers;
+}
+
+struct EjProblemCompilerSubmits *
+problem_compiler_submits_create(int lang_id)
+{
+    struct EjProblemCompilerSubmits *epcs = calloc(1, sizeof(*epcs));
+    epcs->lang_id = lang_id;
+    return epcs;
+}
+
+void
+problem_compiler_submits_free(struct EjProblemCompilerSubmits *epcs)
+{
+    if (epcs) {
+        free(epcs);
+    }
+}
+
+struct EjProblemSubmits *
+problem_submits_create(void)
+{
+    struct EjProblemSubmits *epss = calloc(1, sizeof(*epss));
+    pthread_rwlock_init(&epss->rwl, NULL);
+    return epss;
+}
+
+void
+problem_submits_free(struct EjProblemSubmits *epss)
+{
+    if (epss) {
+        pthread_rwlock_destroy(&epss->rwl);
+        for (int i = 0; i < epss->size; ++i) {
+            problem_compiler_submits_free(epss->submits[i]);
+        }
+        free(epss->submits);
+        free(epss);
+    }
+}
+
+struct EjProblemCompilerSubmits *
+problem_submits_get(struct EjProblemSubmits *epss, int lang_id)
+{
+    int low, high;
+    struct EjProblemCompilerSubmits *epcs = NULL;
+
+    pthread_rwlock_rdlock(&epss->rwl);
+    low = 0; high = epss->size;
+    while (low < high) {
+        int mid = (low + high) / 2;
+        struct EjProblemCompilerSubmits *tmp = epss->submits[mid];
+        if (tmp->lang_id == lang_id) {
+            epcs = tmp;
+            break;
+        } else if (tmp->lang_id < lang_id) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    pthread_rwlock_unlock(&epss->rwl);
+    if (epcs) return epcs;
+
+    pthread_rwlock_wrlock(&epss->rwl);
+    low = 0; high = epss->size;
+    while (low < high) {
+        int mid = (low + high) / 2;
+        struct EjProblemCompilerSubmits *tmp = epss->submits[mid];
+        if (tmp->lang_id == lang_id) {
+            epcs = tmp;
+            break;
+        } else if (tmp->lang_id < lang_id) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    if (!epcs) {
+        if (epss->size >= epss->reserved) {
+            if (!epss->reserved) {
+                epss->reserved = 16;
+            } else {
+                epss->reserved *= 2;
+            }
+            epss->submits = realloc(epss->submits, epss->reserved * sizeof(epss->submits[0]));
+        }
+        if (low < epss->size) {
+            memmove(&epss->submits[low + 1], &epss->submits[low], (epss->size - low) * sizeof(epss->submits[0]));
+        }
+        ++epss->size;
+        epcs = epss->submits[low] = problem_compiler_submits_create(lang_id);
+    }
+    pthread_rwlock_unlock(&epss->rwl);
+    return epcs;
 }
