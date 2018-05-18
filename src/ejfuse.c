@@ -25,7 +25,7 @@
 #include "ops_cnts_prob_files.h"
 #include "ops_cnts_prob_submit.h"
 #include "ops_cnts_prob_submit_compiler.h"
-#include "ops_cnts_prob_submit_lang_dir.h"
+#include "ops_cnts_prob_submit_compiler_dir.h"
 #include "ejudge_client.h"
 
 #define FUSE_USE_VERSION 26
