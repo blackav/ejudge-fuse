@@ -501,7 +501,7 @@ ejudge_client_enter_contest(struct EjFuseState *ejs, struct EjContestState *ecs)
 
     struct EjContestSession *ecc = calloc(1, sizeof(*ecc));
     ecc->cnts_id = ecs->cnts_id;
-    ejudge_client_enter_contest_request(ejs, ecs, ecc, session_id, client_key);
+    ejudge_client_enter_contest_request(ejs, ecs, session_id, client_key, ecc);
     contest_session_set(ecs, ecc);
 }
 
