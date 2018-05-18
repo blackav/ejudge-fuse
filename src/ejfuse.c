@@ -864,19 +864,19 @@ ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
 }
 
 int
-ejf_process_path(const char *path, struct EjFuseRequest *rq)
+ejf_process_path(const char *path, struct EjFuseRequest *efr)
 {
-    memset(rq, 0, sizeof(*rq));
-    rq->fx = fuse_get_context();
-    rq->ejs = (struct EjFuseState *) rq->fx->private_data;
-    update_current_time(rq->ejs);
+    memset(efr, 0, sizeof(*efr));
+    efr->fx = fuse_get_context();
+    efr->ejs = (struct EjFuseState *) efr->fx->private_data;
+    update_current_time(efr->ejs);
     // safety
     if (!path || path[0] != '/') {
         return -ENOENT;
     }
     // then process the path
     if (!strcmp(path, "/")) {
-        rq->ops = &ejfuse_root_operations;
+        efr->ops = &ejfuse_root_operations;
         return 0;
     }
     int len = strlen(path);
@@ -893,8 +893,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         if (errno) return -ENOENT;
         if (*eptr && *eptr != ',') return -ENOENT;
         if (cnts_id <= 0 || (int) cnts_id != cnts_id) return -ENOENT;
-        rq->contest_id = cnts_id;
-        rq->ops = &ejfuse_contest_operations;
+        efr->contest_id = cnts_id;
+        efr->ops = &ejfuse_contest_operations;
         return 0;
     }
     {
@@ -905,37 +905,37 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         if (errno) return -ENOENT;
         if (*eptr != '/' && *eptr != ',') return -ENOENT;
         if (cnts_id <= 0 || (int) cnts_id != cnts_id) return -ENOENT;
-        rq->contest_id = cnts_id;
+        efr->contest_id = cnts_id;
     }
-    if (!contests_is_valid(rq->ejs, rq->contest_id)) {
+    if (!contests_is_valid(efr->ejs, efr->contest_id)) {
         return -ENOENT;
     }
-    if (!(rq->ecs = contests_state_get(rq->ejs->contests_state, rq->contest_id))) {
+    if (!(efr->ecs = contests_state_get(efr->ejs->contests_state, efr->contest_id))) {
         return -ENOENT;
     }
     const char *p2 = strchr(p1 + 1, '/');
     if (!p2) {
         if (!strcmp(p1 + 1, "INFO") || !strcmp(p1 + 1, "info.json")) {
-            rq->file_name = p1 + 1;
-            contest_session_maybe_update(rq->ejs, rq->ecs);
-            contest_info_maybe_update(rq->ejs, rq->ecs);
-            rq->ops = &ejfuse_contest_info_operations;
+            efr->file_name = p1 + 1;
+            contest_session_maybe_update(efr->ejs, efr->ecs);
+            contest_info_maybe_update(efr->ejs, efr->ecs);
+            efr->ops = &ejfuse_contest_info_operations;
             return 0;
         }
         if (!strcmp(p1 + 1, "LOG")) {
-            rq->ops = &ejfuse_contest_log_operations;
+            efr->ops = &ejfuse_contest_log_operations;
             return 0;
         }
         if (!strcmp(p1 + 1, "problems")) {
-            contest_session_maybe_update(rq->ejs, rq->ecs);
-            contest_info_maybe_update(rq->ejs, rq->ecs);
-            rq->ops = &ejfuse_contest_problems_operations;
+            contest_session_maybe_update(efr->ejs, efr->ecs);
+            contest_info_maybe_update(efr->ejs, efr->ecs);
+            efr->ops = &ejfuse_contest_problems_operations;
             return 0;
         }
         return -ENOENT;
     }
-    contest_session_maybe_update(rq->ejs, rq->ecs);
-    contest_info_maybe_update(rq->ejs, rq->ecs);
+    contest_session_maybe_update(efr->ejs, efr->ecs);
+    contest_info_maybe_update(efr->ejs, efr->ecs);
     // next component: [p1 + 1, p2)
     // check for problems
     if (p2 - p1 - 1 != 8 || memcmp(p1 + 1, "problems", 8)) {
@@ -958,10 +958,10 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         }
         memcpy(prob_name_buf, p2 + 1, len);
         prob_name_buf[len] = 0;
-        if (find_problem(rq, prob_name_buf) < 0) {
+        if (find_problem(efr, prob_name_buf) < 0) {
             return -ENOENT;
         }
-        rq->ops = &ejfuse_contest_problem_operations;
+        efr->ops = &ejfuse_contest_problem_operations;
         return 0;
     } else {
         const char *comma = strchr(p2 + 1, ',');
@@ -977,22 +977,22 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         }
         memcpy(prob_name_buf, p2 + 1, len);
         prob_name_buf[len] = 0;
-        if (find_problem(rq, prob_name_buf) < 0) {
+        if (find_problem(efr, prob_name_buf) < 0) {
             return -ENOENT;
         }
-        problem_info_maybe_update(rq->ejs, rq->ecs, rq->eps);
+        problem_info_maybe_update(efr->ejs, efr->ecs, efr->eps);
     }
     const char *p4 = strchr(p3 + 1, '/');
     if (!p4) {
         if (!strcmp(p3 + 1, FN_CONTEST_PROBLEM_INFO)
             || !strcmp(p3 + 1, FN_CONTEST_PROBLEM_INFO_JSON)
             || !strcmp(p3 + 1, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
-            rq->file_name = p3 + 1;
-            rq->ops = &ejfuse_contest_problem_files_operations;
+            efr->file_name = p3 + 1;
+            efr->ops = &ejfuse_contest_problem_files_operations;
             return 0;
         } else if (!strcmp(p3 + 1, "runs")) {
         } else if (!strcmp(p3 + 1, "submit")) {
-            rq->ops = &ejfuse_contest_problem_submit_operations;
+            efr->ops = &ejfuse_contest_problem_submit_operations;
             return 0;
         }
         return -ENOENT;
@@ -1006,7 +1006,7 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
     memcpy(pp3, p3 + 1, pp3l);
     pp3[pp3l] = 0;
     if (!strcmp(pp3, "submit")) {
-        return ejf_process_path_submit(p4, rq);
+        return ejf_process_path_submit(p4, efr);
     } else if (!strcmp(pp3, "runs")) {
     }
 
