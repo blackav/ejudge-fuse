@@ -19,8 +19,7 @@ void
 ejudge_client_enter_contest_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
-        const unsigned char *session_id,
-        const unsigned char *client_key,
+        const struct EjSessionValue *esv,
         struct EjContestSession *ecc); // output
 
 void

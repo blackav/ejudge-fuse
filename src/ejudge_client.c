@@ -20,7 +20,10 @@ contest_log_format(
     __attribute__((format(printf, 5, 6)));
 
 void
-ejudge_client_get_contest_list_request(struct EjFuseState *ejs, struct EjSessionValue *esv, struct EjContestList *contests)
+ejudge_client_get_contest_list_request(
+        struct EjFuseState *ejs,
+        struct EjSessionValue *esv,
+        struct EjContestList *contests)
 {
     CURL *curl = NULL;
     char *err_s = NULL;
@@ -174,8 +177,7 @@ void
 ejudge_client_enter_contest_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
-        const unsigned char *session_id,
-        const unsigned char *client_key,
+        const struct EjSessionValue *esv,
         struct EjContestSession *ecc) // output
 {
     CURL *curl = NULL;
@@ -205,10 +207,10 @@ ejudge_client_enter_contest_request(
     {
         size_t post_z = 0;
         FILE *post_f = open_memstream(&post_s, &post_z);
-        char *s = curl_easy_escape(curl, session_id, 0);
+        char *s = curl_easy_escape(curl, esv->session_id, 0);
         fprintf(post_f, "SID=%s", s);
         free(s);
-        s = curl_easy_escape(curl, client_key, 0);
+        s = curl_easy_escape(curl, esv->client_key, 0);
         fprintf(post_f, "&EJSID=%s", s);
         free(s); s = NULL;
         fprintf(post_f, "&contest_id=%d", ecs->cnts_id);

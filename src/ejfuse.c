@@ -484,24 +484,16 @@ contest_log_format(
 void
 ejudge_client_enter_contest(struct EjFuseState *ejs, struct EjContestState *ecs)
 {
+    struct EjSessionValue esv = {};
+
     int already = contest_session_try_write_lock(ecs);
     if (already) return;
 
-    struct EjTopSession *top_session = top_session_read_lock(ejs);
-    if (!top_session || !top_session->ok) {
-        top_session_read_unlock(top_session);
-        return;
-    }
-
-    unsigned char session_id[128];
-    unsigned char client_key[128];
-    snprintf(session_id, sizeof(session_id), "%s", top_session->session_id);
-    snprintf(client_key, sizeof(client_key), "%s", top_session->client_key);
-    top_session_read_unlock(top_session);
+    if (!top_session_copy_session(ejs, &esv)) return;
 
     struct EjContestSession *ecc = calloc(1, sizeof(*ecc));
     ecc->cnts_id = ecs->cnts_id;
-    ejudge_client_enter_contest_request(ejs, ecs, session_id, client_key, ecc);
+    ejudge_client_enter_contest_request(ejs, ecs, &esv, ecc);
     contest_session_set(ecs, ecc);
 }
 
