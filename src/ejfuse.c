@@ -24,6 +24,7 @@
 #include "ops_cnts_prob_dir.h"
 #include "ops_cnts_prob_files.h"
 #include "ops_cnts_prob_submit.h"
+#include "ops_cnts_prob_submit_lang.h"
 #include "ejudge_client.h"
 
 #define FUSE_USE_VERSION 26
@@ -1152,6 +1153,22 @@ find_problem(struct EjFuseRequest *efr, const unsigned char *name_or_id)
     return val;
 }
 
+/*
+ * /<CNTS>/problems/<PROB>/submit/<LANG>...
+ *                               ^ path
+ */
+static int
+ejf_process_path_submit(const char *path, struct EjFuseRequest *rq)
+{
+    if (path[0] != '/') return -ENOENT;
+    const char *p1 = strchr(path + 1, '/');
+    if (!p1) {
+        rq->ops = &ejfuse_contest_problem_submit_compiler_operations;
+        return 0;
+    }
+    return -ENOENT;
+}
+
 int
 ejf_process_path(const char *path, struct EjFuseRequest *rq)
 {
@@ -1283,9 +1300,20 @@ ejf_process_path(const char *path, struct EjFuseRequest *rq)
         } else if (!strcmp(p3 + 1, "submit")) {
             rq->ops = &ejfuse_contest_problem_submit_operations;
             return 0;
-        } else {
-            return -ENOENT;
         }
+        return -ENOENT;
+    }
+    // next component: [p3 + 1, p4)
+    unsigned char pp3[NAME_MAX + 1];
+    int pp3l = p4 - p3 - 1;
+    if (pp3l > NAME_MAX) {
+        return -ENOENT;
+    }
+    memcpy(pp3, p3 + 1, pp3l);
+    pp3[pp3l] = 0;
+    if (!strcmp(pp3, "submit")) {
+        return ejf_process_path_submit(p4, rq);
+    } else if (!strcmp(pp3, "runs")) {
     }
 
     return -ENOENT;
