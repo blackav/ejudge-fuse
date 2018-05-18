@@ -591,7 +591,7 @@ problem_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, s
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     epi = problem_info_create(eps->prob_id);
-    ejudge_client_problem_info_request(ejs, ecs, epi, &esv, eps->prob_id);
+    ejudge_client_problem_info_request(ejs, ecs, &esv, eps->prob_id, epi);
     problem_info_set(eps, epi);
 }
 

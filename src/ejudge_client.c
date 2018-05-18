@@ -546,9 +546,9 @@ void
 ejudge_client_problem_info_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
-        struct EjProblemInfo *epi, // output
         const struct EjSessionValue *esv,
-        int prob_id)
+        int prob_id,
+        struct EjProblemInfo *epi) // output
 {
     char *err_s = NULL;
     size_t err_z = 0;
