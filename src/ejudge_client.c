@@ -20,6 +20,157 @@ contest_log_format(
     __attribute__((format(printf, 5, 6)));
 
 void
+ejudge_client_get_contest_list_request(struct EjFuseState *ejs, struct EjSessionValue *esv, struct EjContestList *contests)
+{
+    CURL *curl = NULL;
+    char *err_s = NULL;
+    size_t err_z = 0;
+    FILE *err_f = NULL;
+    char *url_s = NULL;
+    char *resp_s = NULL;
+    cJSON *root = NULL;
+
+    err_f = open_memstream(&err_s, &err_z);
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(err_f, "curl_easy_init failed\n");
+        goto failed;
+    }
+
+    {
+        size_t url_z = 0;
+        FILE *url_f = open_memstream(&url_s, &url_z);
+        char *s1, *s2;
+        fprintf(url_f, "%sregister/user-contests-json?SID=%s&EJSID=%s&json=1",
+                ejs->url,
+                (s1 = curl_easy_escape(curl, esv->session_id, 0)),
+                (s2 = curl_easy_escape(curl, esv->client_key, 0)));
+        free(s1);
+        free(s2);
+        fclose(url_f);
+    }
+
+    CURLcode res = 0;
+    {
+        size_t resp_z = 0;
+        FILE *resp_f = open_memstream(&resp_s, &resp_z);
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_URL, url_s);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp_f);
+        res = curl_easy_perform(curl);
+        fclose(resp_f);
+    }
+    if (res != CURLE_OK) {
+        fprintf(err_f, "request failed: %s\n", curl_easy_strerror(res));
+        goto failed;
+    }
+
+    fprintf(stdout, ">%s<\n", resp_s);
+    root = cJSON_Parse(resp_s);
+    if (!root) {
+        fprintf(err_f, "json parse failed\n");
+        goto failed;
+    }
+    if (root->type != cJSON_Object) {
+        goto invalid_json;
+    }
+
+    /*
+{
+  "ok": true,
+  "result": {
+    "contests": [
+      {
+        "id": 2,
+        "name": "Test contest (Tokens)"
+      },
+      {
+        "id": 3,
+        "name": "Test contest (variants)"
+      }
+    ]
+  }
+}
+     */
+
+    cJSON *jok = cJSON_GetObjectItem(root, "ok");
+    if (!jok) {
+        goto invalid_json;
+    }
+    if (jok->type == cJSON_True) {
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+        cJSON *jcontests = cJSON_GetObjectItem(jresult, "contests");
+        if (!jcontests || jcontests->type != cJSON_Array) {
+            goto invalid_json;
+        }
+        contests->count = cJSON_GetArraySize(jcontests);
+        if (contests->count > 0) {
+            contests->entries = calloc(contests->count, sizeof(contests->entries[0]));
+            for (int j = 0; j < contests->count; ++j) {
+                cJSON *jc = cJSON_GetArrayItem(jcontests, j);
+                if (!jc || jc->type != cJSON_Object) {
+                    goto invalid_json;
+                }
+                cJSON *jid = cJSON_GetObjectItem(jc, "id");
+                if (!jid || jid->type != cJSON_Number) {
+                    goto invalid_json;
+                }
+                contests->entries[j].id = jid->valueint;
+                cJSON *jname = cJSON_GetObjectItem(jc, "name");
+                if (!jname || jname->type != cJSON_String) {
+                    goto invalid_json;
+                }
+                contests->entries[j].name = strdup(jname->valuestring);
+            }
+        }
+    } else if (jok->type == cJSON_False) {
+        fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
+        goto failed;
+    } else {
+        goto invalid_json;
+    }
+
+    for (int i = 0; i < contests->count; ++i) {
+        printf("%d: %s\n", contests->entries[i].id, contests->entries[i].name);
+    }
+
+    // normal return
+    contests->log_s = NULL;
+    contests->recheck_time_us = 0;
+    contests->ok = 1;
+
+cleanup:
+    if (root) {
+        cJSON_Delete(root);
+    }
+    free(resp_s);
+    if (curl) {
+        curl_easy_cleanup(curl);
+    }
+    free(url_s);
+    if (err_f) {
+        fclose(err_f); err_f = NULL;
+    }
+    free(err_s);
+    return;
+
+invalid_json:
+    fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
+    
+failed:
+    if (err_f) {
+        fclose(err_f); err_f = NULL;
+    }
+    contests->log_s = err_s; err_s = NULL;
+    contests->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    goto cleanup;
+}
+
+void
 ejudge_client_enter_contest_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,

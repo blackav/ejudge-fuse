@@ -1,11 +1,19 @@
 #pragma once
 
-struct EjFuseState;
-struct EjContestState;
-struct EjProblemInfo;
-struct EjSessionValue;
 struct EjContestInfo;
+struct EjContestList;
 struct EjContestSession;
+struct EjContestState;
+struct EjFuseState;
+struct EjProblemInfo;
+struct EjProblemStatement;
+struct EjSessionValue;
+
+void
+ejudge_client_get_contest_list_request(
+        struct EjFuseState *ejs,
+        struct EjSessionValue *esv,
+        struct EjContestList *contests);
 
 void
 ejudge_client_enter_contest_request(
@@ -31,7 +39,6 @@ ejudge_client_problem_info_request(
         const struct EjSessionValue *esv,
         int prob_id);
 
-struct EjProblemStatement;
 void
 ejudge_client_problem_statement_request(
         struct EjFuseState *ejs,
