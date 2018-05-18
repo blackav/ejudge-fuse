@@ -22,7 +22,7 @@ contest_log_format(
 void
 ejudge_client_get_contest_list_request(
         struct EjFuseState *ejs,
-        struct EjSessionValue *esv,
+        const struct EjSessionValue *esv,
         struct EjContestList *contests)
 {
     CURL *curl = NULL;
