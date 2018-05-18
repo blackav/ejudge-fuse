@@ -411,10 +411,10 @@ top_session_maybe_update(struct EjFuseState *ejs)
 }
 
 int
-top_session_copy_session(struct EjFuseState *efs, struct EjSessionValue *esv)
+top_session_copy_session(struct EjFuseState *ejs, struct EjSessionValue *esv)
 {
     esv->ok = 0;
-    struct EjTopSession *ets = top_session_read_lock(efs);
+    struct EjTopSession *ets = top_session_read_lock(ejs);
     if (!ets || !ets->ok) {
         top_session_read_unlock(ets);
         return 0;
@@ -428,19 +428,19 @@ top_session_copy_session(struct EjFuseState *efs, struct EjSessionValue *esv)
 
 
 void
-ej_get_contest_list(struct EjFuseState *efs)
+ej_get_contest_list(struct EjFuseState *ejs)
 {
     struct EjSessionValue esv = {};
     struct EjContestList *contests = NULL;
 
-    if (!top_session_copy_session(efs, &esv)) return;
-    if (contest_list_try_write_lock(efs)) return;
+    if (!top_session_copy_session(ejs, &esv)) return;
+    if (contest_list_try_write_lock(ejs)) return;
 
     contests = calloc(1, sizeof(*contests));
 
-    ejudge_client_get_contest_list_request(efs, &esv, contests);
+    ejudge_client_get_contest_list_request(ejs, &esv, contests);
 
-    contest_list_set(efs, contests);
+    contest_list_set(ejs, contests);
     return;
 
 }
