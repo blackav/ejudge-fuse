@@ -23,6 +23,16 @@ struct EjProblemStates
     struct EjProblemState **entries;
 };
 
+struct EjRunStates
+{
+    pthread_rwlock_t rwl;
+
+    // sorted by increasing run_id
+    int reserved;
+    int size;
+    struct EjRunState **runs;
+};
+
 struct EjContestSession *
 contest_session_create(int cnts_id)
 {
@@ -142,6 +152,7 @@ contest_state_free(struct EjContestState *ecs)
         pthread_mutex_destroy(&ecs->log_mutex);
         contest_session_free(ecs->session);
         problem_states_free(ecs->prob_states);
+        run_states_free(ecs->run_states);
         free(ecs);
     }
 }
@@ -626,4 +637,108 @@ problem_statement_set(struct EjProblemState *eps, struct EjProblemStatement *eph
         }
         problem_statement_free(old);
     }
+}
+
+struct EjRunState *
+run_state_create(int run_id)
+{
+    struct EjRunState *ejr = calloc(1, sizeof(*ejr));
+    ejr->run_id = run_id;
+    return ejr;
+}
+
+void
+run_state_free(struct EjRunState *ejr)
+{
+    if (ejr) {
+        free(ejr);
+    }
+}
+
+struct EjRunStates *
+run_states_create(void)
+{
+    struct EjRunStates *ejrs = calloc(1, sizeof(*ejrs));
+    pthread_rwlock_init(&ejrs->rwl, NULL);
+    return ejrs;
+}
+
+void
+run_states_free(struct EjRunStates *ejrs)
+{
+    if (ejrs) {
+        pthread_rwlock_destroy(&ejrs->rwl);
+        for (int i = 0; i < ejrs->size; ++i) {
+            free(ejrs->runs[i]);
+        }
+        free(ejrs->runs);
+        free(ejrs);
+    }
+}
+
+struct EjRunState *
+run_states_get(struct EjRunStates *erss, int run_id)
+{
+    struct EjRunState *ers = NULL;
+    int low, high;
+
+    pthread_rwlock_rdlock(&erss->rwl);
+    if (erss->size > 0 && run_id >= erss->runs[0]->run_id && run_id <= erss->runs[erss->size - 1]->run_id) {
+        low = 0; high = erss->size;
+        while (low < high) {
+            int mid = (low + high) / 2;
+            ers = erss->runs[mid];
+            if (ers->run_id == run_id) {
+                pthread_rwlock_unlock(&erss->rwl);
+                return ers;
+            } else if (ers->run_id < run_id) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+    }
+    pthread_rwlock_unlock(&erss->rwl);
+    pthread_rwlock_wrlock(&erss->rwl);
+    if (erss->size <= 0 || run_id < erss->runs[0]->run_id) {
+        low = high = 0;
+        ers = NULL;
+    } else if (run_id > erss->runs[erss->size - 1]->run_id) {
+        low = high = erss->size;
+        ers = NULL;
+    } else {
+        low = 0; high = erss->size;
+        ers = NULL;
+        while (low < high) {
+            int mid = (low + high) / 2;
+            struct EjRunState *tmp = erss->runs[mid];
+            if (ers->run_id == run_id) {
+                ers = tmp;
+                break;
+            } else if (ers->run_id < run_id) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+    }
+    if (ers) {
+        pthread_rwlock_unlock(&erss->rwl);
+        return ers;
+    }
+    if (erss->size >= erss->reserved) {
+        if (!erss->reserved) {
+            erss->reserved = 16;
+        } else {
+            erss->reserved *= 2;
+        }
+        erss->runs = realloc(erss->runs, erss->reserved * sizeof(erss->runs[0]));
+    }
+    if (low < erss->size) {
+        memmove(&erss->runs[low + 1], &erss->runs[low], (erss->size - low) * sizeof(erss->runs[0]));
+    }
+    ++erss->size;
+    ers = erss->runs[low] = run_state_create(run_id);
+    pthread_rwlock_unlock(&erss->rwl);
+    return ers;
 }

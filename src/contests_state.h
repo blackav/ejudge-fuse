@@ -197,7 +197,14 @@ struct EjProblemState
     _Atomic _Bool stmt_update;
 };
 
+// run state is a container for updateable run structures
+struct EjRunState
+{
+    int run_id;
+};
+
 struct EjProblemStates;
+struct EjRunStates;
 
 struct EjContestState
 {
@@ -217,6 +224,9 @@ struct EjContestState
 
     // PIMPL pointer to the problem list
     struct EjProblemStates *prob_states;
+
+    // PIMPL to the runs
+    struct EjRunStates *run_states;
 };
 
 struct EjContestsState;
@@ -277,3 +287,10 @@ struct EjProblemStatement *problem_statement_read_lock(struct EjProblemState *ep
 void problem_statement_read_unlock(struct EjProblemStatement *eph);
 int problem_statement_try_write_lock(struct EjProblemState *eps);
 void problem_statement_set(struct EjProblemState *eps, struct EjProblemStatement *eph);
+
+struct EjRunState *run_state_create(int run_id);
+void run_state_free(struct EjRunState *ejr);
+
+struct EjRunStates *run_states_create(void);
+void run_states_free(struct EjRunStates *ejrs);
+struct EjRunState *run_states_get(struct EjRunStates *erss, int run_id);
