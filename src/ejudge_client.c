@@ -337,8 +337,7 @@ void
 ejudge_client_contest_info_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
-        const unsigned char *session_id,
-        const unsigned char *client_key,
+        const struct EjSessionValue *esv,
         struct EjContestInfo *eci) // output
 {
     char *err_s = NULL;
@@ -363,8 +362,8 @@ ejudge_client_contest_info_request(
         char *s1, *s2;
         fprintf(url_f, "%sclient/contest-status-json?SID=%s&EJSID=%s&json=1",
                 ejs->url,
-                (s1 = curl_easy_escape(curl, session_id, 0)),
-                (s2 = curl_easy_escape(curl, client_key, 0)));
+                (s1 = curl_easy_escape(curl, esv->session_id, 0)),
+                (s2 = curl_easy_escape(curl, esv->client_key, 0)));
         free(s1);
         free(s2);
         fclose(url_f);
