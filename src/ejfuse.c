@@ -796,7 +796,7 @@ find_problem(struct EjFuseRequest *efr, const unsigned char *name_or_id)
     errno = 0;
     char *eptr = NULL;
     long val = strtol(name_or_id, &eptr, 10);
-    if (*eptr || errno || (unsigned char *) eptr == name_or_id || (int) val != val || val <= 0 || val > eci->prob_size || !eci->probs[val]) {
+    if (*eptr || errno || (unsigned char *) eptr == name_or_id || (int) val != val || val <= 0 || val >= eci->prob_size || !eci->probs[val]) {
         contest_info_read_unlock(eci);
         return -ENOENT;
     }
@@ -806,17 +806,58 @@ find_problem(struct EjFuseRequest *efr, const unsigned char *name_or_id)
     return val;
 }
 
+static int
+find_compiler(struct EjFuseRequest *efr, const unsigned char *name_or_id)
+{
+    struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
+    for (int lang_id = 1; lang_id < eci->compiler_size; ++lang_id) {
+        struct EjContestCompiler *ecl = eci->compilers[lang_id];
+        if (ecl && ecl->short_name && !strcmp(name_or_id, ecl->short_name)) {
+            efr->lang_id = lang_id;
+            contest_info_read_unlock(eci);
+            return lang_id;
+        }
+    }
+
+    errno = 0;
+    char *eptr = NULL;
+    long val = strtol(name_or_id, &eptr, 10);
+    if (*eptr || errno || (unsigned char *) eptr == name_or_id || (int) val != val || val <= 0 || val >= eci->compiler_size || !eci->compilers[val]) {
+        contest_info_read_unlock(eci);
+        return -ENOENT;
+    }
+    efr->lang_id = val;
+    contest_info_read_unlock(eci);
+    return val;
+}
+
 /*
  * /<CNTS>/problems/<PROB>/submit/<LANG>...
  *                               ^ path
  */
 static int
-ejf_process_path_submit(const char *path, struct EjFuseRequest *rq)
+ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
 {
+    unsigned char lang_buf[NAME_MAX + 1];
     if (path[0] != '/') return -ENOENT;
     const char *p1 = strchr(path + 1, '/');
     if (!p1) {
-        rq->ops = &ejfuse_contest_problem_submit_compiler_operations;
+        const char *comma = strchr(path + 1, ',');
+        int len = 0;
+        if (!comma) {
+            len = strlen(path + 1);
+        } else {
+            len = comma - path - 1;
+        }
+        if (len > NAME_MAX) {
+            return -ENOENT;
+        }
+        memcpy(lang_buf, path + 1, len);
+        lang_buf[len] = 0;
+        if (find_compiler(efr, lang_buf) < 0) {
+            return -ENOENT;
+        }
+        efr->ops = &ejfuse_contest_problem_submit_compiler_operations;
         return 0;
     }
     return -ENOENT;

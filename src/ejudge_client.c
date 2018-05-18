@@ -658,8 +658,8 @@ ejudge_client_problem_info_request(
                 if (!jl || jl->type != cJSON_Number || jl->valueint <= 0 || jl->valueint > 1024) goto invalid_json;
                 if (jl->valueint > max_lang_id) max_lang_id = jl->valueint;
             }
-            epi->compilers_size = max_lang_id + 1;
-            epi->compilers = calloc(epi->compilers_size, sizeof(epi->compilers[0]));
+            epi->compiler_size = max_lang_id + 1;
+            epi->compilers = calloc(epi->compiler_size, sizeof(epi->compilers[0]));
             for (int i = 0; i < arr_size; ++i) {
                 cJSON *jl = cJSON_GetArrayItem(jj, i);
                 epi->compilers[jl->valueint] = 1;

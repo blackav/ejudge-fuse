@@ -131,7 +131,7 @@ struct EjProblemInfo
 
     time_t start_date;
 
-    int compilers_size;
+    int compiler_size;
     unsigned char *compilers;
 
     unsigned long long max_vm_size;

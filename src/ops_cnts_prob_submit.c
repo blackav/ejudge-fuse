@@ -126,8 +126,8 @@ ejf_readdir(
 
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
     if (eci && eci->ok) {
-        if (epi->compilers && epi->compilers_size > 0) {
-            for (int lang_id = 1; lang_id < epi->compilers_size; ++lang_id) {
+        if (epi->compilers && epi->compiler_size > 0) {
+            for (int lang_id = 1; lang_id < epi->compiler_size; ++lang_id) {
                 struct EjContestCompiler *ecl = NULL;
                 if (epi->compilers[lang_id] && lang_id < eci->compiler_size && (ecl = eci->compilers[lang_id])) {
                     unsigned char entry_path[PATH_MAX];

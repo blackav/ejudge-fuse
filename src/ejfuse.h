@@ -78,6 +78,7 @@ struct EjFuseRequest
     const unsigned char *file_name;
     int prob_id;
     struct EjProblemState *eps;
+    int lang_id;
 };
 
 struct EjFuseRequest;
