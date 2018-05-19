@@ -18,3 +18,91 @@
  * You should have received a copy of the GNU General Public License
  * along with Ejudge-fuse.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#include <limits.h>
+#include <pthread.h>
+
+// hold read-write file info (similar to inode)
+struct EjFileNode
+{
+    int fnode;   // serial number, a component to "/fnone/<NUM>" path to generate an inode
+    struct EjFileNode *reclaim_next; // the list of nodes for reclaim
+
+    pthread_rwlock_t rwl;
+
+    int mode;       // just permission bits
+    int nlink;      // refcounter
+    long long size;
+
+    long long atime_us;
+    long long mtime_us;
+    long long ctime_us;
+};
+
+struct EjFileNodes
+{
+    pthread_rwlock_t rwl;
+
+    int serial;
+    int reserved;
+    int size;
+    struct EjFileNode **nodes;
+    struct EjFileNode *reclaim_first;
+};
+
+struct EjDirectoryNode
+{
+    int fnode;
+    unsigned char name[NAME_MAX + 1];
+};
+
+struct EjDirectoryNodes
+{
+    pthread_rwlock_t rwl;
+
+    int reserved;
+    int size;
+    struct EjDirectoryNode **nodes;
+};
+
+struct EjFileNode *file_node_create(int fnode);
+void file_node_free(struct EjFileNode *efn);
+
+struct EjFileNodes *file_nodes_create(void);
+void file_nodes_free(struct EjFileNodes *efns);
+
+struct EjFileNode *file_nodes_create_node(struct EjFileNodes *efns);
+struct EjFileNode *file_nodes_get_node(struct EjFileNodes *efns, int fnode);
+void file_nodes_remove_node(struct EjFileNodes *efns, int fnode);
+
+struct EjDirectoryNode *
+dir_node_create(
+        int fnode,
+        const unsigned char *name,
+        size_t len);
+void dir_node_free(struct EjDirectoryNode *edn);
+
+struct EjDirectoryNodes *dir_nodes_create(void);
+void dir_nodes_free(struct EjDirectoryNodes *edns);
+
+int
+dir_nodes_get_node(
+        struct EjDirectoryNodes *edns,
+        const unsigned char *name,
+        size_t len,
+        struct EjDirectoryNode *res);
+int
+dir_nodes_open_node(
+        struct EjDirectoryNodes *edns,
+        struct EjFileNodes *efns,
+        const unsigned char *name,
+        size_t len,
+        int excl_mode,
+        int create_mode,
+        struct EjDirectoryNode *res);
+int
+dir_nodes_unlink_node(
+        struct EjDirectoryNodes *edns,
+        const unsigned char *name,
+        size_t len,
+        struct EjDirectoryNode *res);

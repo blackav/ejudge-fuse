@@ -46,6 +46,7 @@
 #include "ops_cnts_prob_submit_compiler.h"
 #include "ops_cnts_prob_submit_compiler_dir.h"
 #include "ejudge_client.h"
+#include "ejfuse_file.h"
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -973,6 +974,7 @@ int main(int argc, char *argv[])
     ejs->owner_gid = getgid();
     ejs->inode_hash = inode_hash_create();
     ejs->contests_state = contests_state_create();
+    ejs->file_nodes = file_nodes_create();
 
     update_current_time(ejs);
     ejs->start_time_us = ejs->current_time_us;

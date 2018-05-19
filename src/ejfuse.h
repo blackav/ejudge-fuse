@@ -58,6 +58,8 @@ struct EjContestList
     struct EjContestListItem *entries;
 };
 
+struct EjFileNodes;
+
 struct EjFuseState
 {
     // settings
@@ -84,6 +86,8 @@ struct EjFuseState
     struct EjInodeHash *inode_hash;
 
     struct EjContestsState *contests_state;
+
+    struct EjFileNodes *file_nodes;
 };
 
 struct EjFuseRequest

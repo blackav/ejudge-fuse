@@ -18,6 +18,7 @@
  */
 
 #include "contests_state.h"
+#include "ejfuse_file.h"
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -778,6 +779,7 @@ problem_compiler_submits_create(int lang_id)
 {
     struct EjProblemCompilerSubmits *epcs = calloc(1, sizeof(*epcs));
     epcs->lang_id = lang_id;
+    epcs->dir_nodes = dir_nodes_create();
     return epcs;
 }
 
@@ -785,6 +787,7 @@ void
 problem_compiler_submits_free(struct EjProblemCompilerSubmits *epcs)
 {
     if (epcs) {
+        dir_nodes_free(epcs->dir_nodes);
         free(epcs);
     }
 }

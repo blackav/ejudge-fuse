@@ -202,9 +202,13 @@ struct EjProblemStatement
     size_t stmt_size;
 };
 
+struct EjDirectoryNodes;
+
 struct EjProblemCompilerSubmits
 {
     int lang_id;
+
+    struct EjDirectoryNodes *dir_nodes;
 };
 
 struct EjProblemSubmits;
