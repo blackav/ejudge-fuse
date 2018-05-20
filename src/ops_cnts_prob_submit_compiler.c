@@ -22,6 +22,7 @@
 #include "ejfuse.h"
 #include "ops_generic.h"
 #include "contests_state.h"
+#include "ejfuse_file.h"
 
 #include <string.h>
 #include <errno.h>
@@ -55,7 +56,8 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
     stb->st_ino = get_inode(ejs, fullpath);
     // non-standard permissions: -wx------
-    stb->st_mode = S_IFDIR | 0300;
+    //stb->st_mode = S_IFDIR | 0300;
+    stb->st_mode = S_IFDIR | 0700; // debug
     stb->st_nlink = 2;
     stb->st_uid = ejs->owner_uid;
     stb->st_gid = ejs->owner_gid;
@@ -77,7 +79,8 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
     struct EjFuseState *ejs = efr->ejs;
     int retval = -ENOENT;
-    int perms = 0300;
+    //int perms = 0300;
+    int perms = 0700; // debug
     mode &= 07;
 
     struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
@@ -116,7 +119,27 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 static int
 ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
-    return -EPERM;
+    struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    if (efr->lang_id <= 0) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    if (epi->compiler_size && epi->compilers) {
+        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+    }
+    problem_info_read_unlock(epi);
+
+    if (efr->ejs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+    return 0;
 }
 
 static int
@@ -128,7 +151,49 @@ ejf_readdir(
         off_t offset,
         struct fuse_file_info *ffi)
 {
-    return -EPERM;
+    struct EjFuseState *ejs = efr->ejs;
+    struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    if (efr->lang_id <= 0) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    if (epi->compiler_size && epi->compilers) {
+        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+    }
+    problem_info_read_unlock(epi);
+
+    unsigned char dot_path[PATH_MAX];
+    snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
+    struct stat es;
+    memset(&es, 0, sizeof(es));
+    es.st_ino = get_inode(ejs, dot_path);
+    filler(buf, ".", &es, 0);
+
+    unsigned char ddot_path[PATH_MAX];
+    snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    es.st_ino = get_inode(ejs, ddot_path);
+    filler(buf, "..", &es, 0);
+
+    struct EjProblemCompilerSubmits *epcs = problem_submits_get(efr->eps->submits, efr->lang_id);
+    dir_nodes_lock(epcs->dir_nodes);
+    int size = dir_nodes_size(epcs->dir_nodes);
+    for (int i = 0; i < size; ++size) {
+        struct EjDirectoryNode dn;
+        unsigned char path[PATH_MAX];
+        dir_nodes_read(epcs->dir_nodes, i, &dn);
+        snprintf(path, sizeof(path), "/fnode/%d", dn.fnode);
+        es.st_ino = get_inode(ejs, path);
+        filler(buf, dn.name, &es, 0);
+    }
+    dir_nodes_unlock(epcs->dir_nodes);
+    return 0;
 }
 
 static int

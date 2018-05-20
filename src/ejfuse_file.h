@@ -106,3 +106,8 @@ dir_nodes_unlink_node(
         const unsigned char *name,
         size_t len,
         struct EjDirectoryNode *res);
+
+void dir_nodes_lock(struct EjDirectoryNodes *edns);
+void dir_nodes_unlock(struct EjDirectoryNodes *edns);
+int dir_nodes_size(struct EjDirectoryNodes *edns);
+int dir_nodes_read(struct EjDirectoryNodes *edns, int index, struct EjDirectoryNode *res);

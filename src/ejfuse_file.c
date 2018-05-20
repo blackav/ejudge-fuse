@@ -306,3 +306,28 @@ done:
     pthread_rwlock_unlock(&edns->rwl);
     return retval;
 }
+
+void
+dir_nodes_lock(struct EjDirectoryNodes *edns)
+{
+    pthread_rwlock_rdlock(&edns->rwl);
+}
+
+void
+dir_nodes_unlock(struct EjDirectoryNodes *edns)
+{
+    pthread_rwlock_unlock(&edns->rwl);
+}
+
+int
+dir_nodes_size(struct EjDirectoryNodes *edns)
+{
+    return edns->size;
+}
+
+int
+dir_nodes_read(struct EjDirectoryNodes *edns, int index, struct EjDirectoryNode *res)
+{
+    memcpy(res, edns->nodes[index], sizeof(*res));
+    return 0;
+}
