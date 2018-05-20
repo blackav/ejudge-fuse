@@ -27,6 +27,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdatomic.h>
 
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
@@ -90,6 +91,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     stb->st_ctim.tv_sec = efn->ctime_us / 1000000;
     stb->st_ctim.tv_nsec = (efn->ctime_us % 1000000) * 1000;
     pthread_rwlock_unlock(&efn->rwl);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     problem_info_read_unlock(epi);
     return 0;
 }

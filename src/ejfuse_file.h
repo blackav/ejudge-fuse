@@ -29,6 +29,7 @@ struct EjFileNode
     struct EjFileNode *reclaim_next; // the list of nodes for reclaim
 
     pthread_rwlock_t rwl;
+    _Atomic int refcnt;   // reference counter for pointers outside of EjFileNodes
 
     int mode;       // just permission bits
     int nlink;      // refcounter
@@ -71,7 +72,6 @@ void file_node_free(struct EjFileNode *efn);
 struct EjFileNodes *file_nodes_create(void);
 void file_nodes_free(struct EjFileNodes *efns);
 
-struct EjFileNode *file_nodes_create_node(struct EjFileNodes *efns);
 struct EjFileNode *file_nodes_get_node(struct EjFileNodes *efns, int fnode);
 void file_nodes_remove_node(struct EjFileNodes *efns, int fnode);
 

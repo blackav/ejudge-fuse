@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdatomic.h>
 
 struct EjFileNode *
 file_node_create(int fnode)
@@ -70,7 +71,7 @@ file_nodes_free(struct EjFileNodes *efns)
     }
 }
 
-struct EjFileNode *
+static struct EjFileNode *
 file_nodes_create_node(struct EjFileNodes *efns)
 {
     struct EjFileNode *retval = NULL;
@@ -96,6 +97,7 @@ file_nodes_get_node(struct EjFileNodes *efns, int fnode)
             struct EjFileNode *tmp = efns->nodes[mid];
             if (tmp->fnode == fnode) {
                 retval = tmp;
+                atomic_fetch_add_explicit(&retval->refcnt, 1, memory_order_relaxed);
                 break;
             } else if (tmp->fnode < fnode) {
                 low = mid + 1;
