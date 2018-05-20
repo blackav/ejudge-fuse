@@ -199,6 +199,7 @@ dir_nodes_get_node(
         struct EjDirectoryNode *tmp = edns->nodes[mid];
         int r = strcmp(tmp->name, name);
         if (!r) {
+            memcpy(res, tmp, sizeof(*res));
             retval = 0;
             break;
         } else if (r < 0) {
@@ -221,7 +222,7 @@ dir_nodes_open_node(
         int create_mode,
         struct EjDirectoryNode *res)
 {
-    if (len < NAME_MAX) return -ENAMETOOLONG;
+    if (len > NAME_MAX) return -ENAMETOOLONG;
 
     int retval = -ENOENT;
     pthread_rwlock_wrlock(&edns->rwl);
@@ -263,6 +264,7 @@ dir_nodes_open_node(
         memmove(&edns->nodes[low + 1], &edns->nodes[low], (edns->size - low) * sizeof(edns->nodes[0]));
     }
     edns->nodes[low] = dir_node_create(efn->fnode, name, len);
+    ++edns->size;
     memcpy(res, edns->nodes[low], sizeof(*res));
     retval = 0;
 
@@ -278,7 +280,7 @@ dir_nodes_unlink_node(
         size_t len,
         struct EjDirectoryNode *res)
 {
-    if (len < NAME_MAX) return -ENAMETOOLONG;
+    if (len > NAME_MAX) return -ENAMETOOLONG;
 
     int retval = -ENOENT;
     pthread_rwlock_wrlock(&edns->rwl);

@@ -720,22 +720,31 @@ ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
     unsigned char lang_buf[NAME_MAX + 1];
     if (path[0] != '/') return -ENOENT;
     const char *p1 = strchr(path + 1, '/');
+    const char *comma = strchr(path + 1, ',');
+    int len = 0;
     if (!p1) {
-        const char *comma = strchr(path + 1, ',');
-        int len = 0;
         if (!comma) {
             len = strlen(path + 1);
         } else {
             len = comma - path - 1;
         }
-        if (len > NAME_MAX) {
-            return -ENOENT;
+    } else {
+        if (!comma || comma > p1) {
+            len = p1 - path - 1;
+        } else {
+            len = comma - path - 1;
         }
-        memcpy(lang_buf, path + 1, len);
-        lang_buf[len] = 0;
-        if (find_compiler(efr, lang_buf) < 0) {
-            return -ENOENT;
-        }
+    }
+    if (len > NAME_MAX) {
+        return -ENOENT;
+    }
+    memcpy(lang_buf, path + 1, len);
+    lang_buf[len] = 0;
+    if (find_compiler(efr, lang_buf) < 0) {
+        return -ENOENT;
+    }
+
+    if (!p1) {
         efr->ops = &ejfuse_contest_problem_submit_compiler_operations;
         return 0;
     }
