@@ -23,6 +23,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdatomic.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 struct EjFileNode *
 file_node_create(int fnode)
@@ -329,5 +331,45 @@ int
 dir_nodes_read(struct EjDirectoryNodes *edns, int index, struct EjDirectoryNode *res)
 {
     memcpy(res, edns->nodes[index], sizeof(*res));
+    return 0;
+}
+
+int
+file_node_reserve_unlocked(struct EjFileNode *efn, off_t offset)
+{
+    if (offset < 0) return -EINVAL;
+    int ioff = offset;
+    if (ioff != offset) return -EINVAL;
+    if (ioff <= efn->reserved) return 0;
+
+    int new_reserved = efn->reserved * 2;
+    if (!new_reserved) new_reserved = 4096;
+    while (new_reserved < ioff) new_reserved *= 2;
+    unsigned char *new_data = realloc(efn->data, new_reserved);
+    if (!new_data) return -EIO;
+    efn->data = new_data;
+    memset(efn->data + efn->reserved, 0, new_reserved - efn->reserved);
+    efn->reserved = new_reserved;
+
+    return 0;
+}
+
+int
+file_node_truncate_unlocked(struct EjFileNode *efn, off_t offset)
+{
+    if (offset < 0) return -EINVAL;
+    int ioff = offset;
+    if (ioff != offset) return -EINVAL;
+    if (ioff == efn->size) return 0;
+    if (ioff < efn->size) {
+        memset(efn->data + ioff, 0, efn->size - ioff);
+        efn->size = ioff;
+        return 0;
+    }
+
+    int res = file_node_reserve_unlocked(efn, ioff);
+    if (res < 0) return res;
+
+    efn->size = ioff;
     return 0;
 }

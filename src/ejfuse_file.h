@@ -21,6 +21,7 @@
 
 #include <limits.h>
 #include <pthread.h>
+#include <sys/types.h>
 
 // hold read-write file info (similar to inode)
 struct EjFileNode
@@ -30,14 +31,19 @@ struct EjFileNode
 
     pthread_rwlock_t rwl;
     _Atomic int refcnt;   // reference counter for pointers outside of EjFileNodes
+    _Atomic int opencnt;  // open file counter
 
     int mode;       // just permission bits
     int nlink;      // refcounter
-    long long size;
 
     long long atime_us;
     long long mtime_us;
     long long ctime_us;
+    long long dname_us;
+
+    int size;      // int - intentionally, we don't want too big files (>= 2G)
+    int reserved;  // int - intentionally, we don't want too big files (>= 2G)
+    unsigned char *data;
 };
 
 struct EjFileNodes
@@ -111,3 +117,6 @@ void dir_nodes_lock(struct EjDirectoryNodes *edns);
 void dir_nodes_unlock(struct EjDirectoryNodes *edns);
 int dir_nodes_size(struct EjDirectoryNodes *edns);
 int dir_nodes_read(struct EjDirectoryNodes *edns, int index, struct EjDirectoryNode *res);
+
+int file_node_reserve_unlocked(struct EjFileNode *efn, off_t offset);
+int file_node_truncate_unlocked(struct EjFileNode *efn, off_t offset);
