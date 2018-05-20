@@ -184,7 +184,7 @@ ejf_readdir(
     struct EjProblemCompilerSubmits *epcs = problem_submits_get(efr->eps->submits, efr->lang_id);
     dir_nodes_lock(epcs->dir_nodes);
     int size = dir_nodes_size(epcs->dir_nodes);
-    for (int i = 0; i < size; ++size) {
+    for (int i = 0; i < size; ++i) {
         struct EjDirectoryNode dn;
         unsigned char path[PATH_MAX];
         dir_nodes_read(epcs->dir_nodes, i, &dn);
