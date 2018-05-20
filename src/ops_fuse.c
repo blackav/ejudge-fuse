@@ -428,7 +428,7 @@ ejf_entry_ftruncate(const char *path, off_t offset, struct fuse_file_info *ffi)
     if (!rq.ops || !rq.ops->ftruncate) {
         return request_free(&rq, -ENOSYS);
     }
-    return request_free(&rq, rq.ops->create(&rq, path, offset, ffi));
+    return request_free(&rq, rq.ops->ftruncate(&rq, path, offset, ffi));
 }
 static int
 ejf_entry_fgetattr(const char *path, struct stat *stb, struct fuse_file_info *ffi)
