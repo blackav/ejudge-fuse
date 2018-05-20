@@ -404,7 +404,7 @@ ejf_entry_access(const char *path, int mode)
     }
     return request_free(&rq, rq.ops->access(&rq, path, mode));
 }
-static int
+static int __attribute__((unused))
 ejf_entry_create(const char *path, mode_t mode, struct fuse_file_info *ffi)
 {
     struct EjFuseRequest rq;
@@ -878,7 +878,7 @@ const struct fuse_operations ejf_fuse_operations =
      *
      * Introduced in version 2.5
      */
-    ejf_entry_create,
+    NULL, //ejf_entry_create,
 
     /**
      * Change the size of an open file
