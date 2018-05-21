@@ -878,7 +878,7 @@ const struct fuse_operations ejf_fuse_operations =
      *
      * Introduced in version 2.5
      */
-    NULL, //ejf_entry_create,
+    ejf_entry_create,
 
     /**
      * Change the size of an open file

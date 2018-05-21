@@ -166,18 +166,13 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     if (!epcs) return -ENOENT;
 
     struct EjDirectoryNode dn;
-    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 1, &dn);
+    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 1, mode, efr->ejs->current_time_us, &dn);
     if (res < 0) return res;
 
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_rwlock_wrlock(&efn->rwl);
-
-    efn->mode = mode;
-    efn->size = 0;
-    efn->ctime_us = efr->ejs->current_time_us;
-    efn->mtime_us = efr->ejs->current_time_us;
 
     pthread_rwlock_unlock(&efn->rwl);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
@@ -314,10 +309,14 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
 static int
 ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse_file_info *ffi)
 {
-    /*
+    int what = mode & S_IFMT;
+    if (what && what != S_IFREG) return -EINVAL;
     mode &= 0777;
+
     size_t name_len = strlen(efr->file_name);
     if (name_len > NAME_MAX) return -ENAMETOOLONG;
+
+    if (efr->ejs->owner_uid != efr->fx->uid) return -EPERM;
 
     int open_mode = (ffi->flags & O_ACCMODE);
     int req_bits = 0;
@@ -336,8 +335,35 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
 
     struct EjProblemCompilerSubmits *epcs = problem_submits_get(efr->eps->submits, efr->lang_id);
     if (!epcs) return -ENOENT;
-    */
-    return -ENOTSUP;
+
+    struct EjDirectoryNode dn;
+    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 0, mode, efr->ejs->current_time_us, &dn);
+    if (res < 0) return res;
+
+    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    if (!efn) return -ENOENT;
+
+    pthread_rwlock_wrlock(&efn->rwl);
+
+    if ((res = check_perms(efr, efn->mode, req_bits)) < 0) {
+        pthread_rwlock_unlock(&efn->rwl);
+        atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
+        return res;
+    }
+
+    if ((open_mode == O_WRONLY || open_mode == O_RDWR) && (ffi->flags & O_TRUNC)) {
+        // truncate output
+        efn->size = 0;
+        efn->mtime_us = efr->ejs->current_time_us;
+    }
+
+    efn->atime_us = efr->ejs->current_time_us;
+    atomic_fetch_add_explicit(&efn->opencnt, 1, memory_order_relaxed);
+    ffi->fh = dn.fnode;
+    pthread_rwlock_unlock(&efn->rwl);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
+
+    return 0;
 }
 
 static int
