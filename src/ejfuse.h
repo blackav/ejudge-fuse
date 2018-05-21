@@ -59,6 +59,7 @@ struct EjContestList
 };
 
 struct EjFileNodes;
+struct EjSubmitThread;
 
 struct EjFuseState
 {
@@ -88,6 +89,8 @@ struct EjFuseState
     struct EjContestsState *contests_state;
 
     struct EjFileNodes *file_nodes;
+
+    struct EjSubmitThread *submit_thread;
 };
 
 struct EjFuseRequest

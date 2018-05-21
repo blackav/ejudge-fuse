@@ -19,3 +19,33 @@
  * along with Ejudge-fuse.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+struct EjFuseState;
+
+struct EjSubmitItem
+{
+    long long submit_time_us;
+    int cnts_id;
+    int prob_id;
+    int lang_id;
+    int fnode;
+    unsigned char *fname;
+};
+
+struct EjSubmitThread;
+
+struct EjSubmitThread *submit_thread_create(void);
+void submit_thread_free(struct EjSubmitThread *st);
+
+struct EjSubmitItem *
+submit_item_create(
+        long long submit_time_us,
+        int cnts_id,
+        int prob_id,
+        int lang_id,
+        int fnode,
+        const unsigned char *fname);
+
+int submit_thread_start(struct EjSubmitThread *st, struct EjFuseState *);
+
+void submit_thread_enqueue(struct EjSubmitThread *st, struct EjSubmitItem *si);
+

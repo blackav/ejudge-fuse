@@ -23,6 +23,7 @@
 #include "ops_generic.h"
 #include "contests_state.h"
 #include "ejfuse_file.h"
+#include "submit_thread.h"
 
 #include <string.h>
 #include <errno.h>
@@ -506,11 +507,13 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
-    pthread_mutex_lock(&efn->m);
-
-    // FIXME: send the submit!
-
-    pthread_mutex_unlock(&efn->m);
+    submit_thread_enqueue(efr->ejs->submit_thread,
+                          submit_item_create(efr->ejs->current_time_us,
+                                             efr->contest_id,
+                                             efr->prob_id,
+                                             efr->lang_id,
+                                             ffi->fh,
+                                             efr->file_name));
 
     atomic_fetch_sub_explicit(&efn->opencnt, 1, memory_order_relaxed);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
