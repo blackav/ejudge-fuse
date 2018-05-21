@@ -168,7 +168,16 @@ struct EjContestListItem *contest_list_find(const struct EjContestList *contests
 struct EjFuseState;
 struct EjContestState;
 struct EjProblemState;
-void problem_info_maybe_update(
+void
+contest_session_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs);
+void
+contest_info_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs);
+void
+problem_info_maybe_update(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
         struct EjProblemState *eps);

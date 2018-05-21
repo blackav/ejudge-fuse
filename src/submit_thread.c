@@ -18,12 +18,16 @@
  */
 
 #include "submit_thread.h"
+#include "contests_state.h"
+#include "ejfuse.h"
+#include "ejfuse_file.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <stdatomic.h>
 
 struct EjSubmitListItem
 {
@@ -118,6 +122,86 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
 
     fprintf(stderr, "SUBMIT: %lld, %lld, %d, %d, %d, %d, %s\n",
             si->submit_time_us, current_time_us, si->cnts_id, si->prob_id, si->lang_id, si->fnode, si->fname);
+
+    // validate everything
+    // FIXME: update contest list
+    // validate cnts_id
+    struct EjContestList *contests = contest_list_read_lock(st->efs);
+    if (!contests) {
+        return;
+    }
+    struct EjContestListItem *cli = contest_list_find(contests, si->cnts_id);
+    contest_list_read_unlock(contests);
+    if (!cli) {
+        return;
+    }
+    struct EjContestState *ecs = contests_state_get(st->efs->contests_state, si->cnts_id);
+    if (!ecs) {
+        return;
+    }
+    contest_session_maybe_update(st->efs, ecs);
+    contest_info_maybe_update(st->efs, ecs);
+
+    struct EjContestInfo *eci = contest_info_read_lock(ecs);
+    if (si->prob_id <= 0 || si->prob_id >= eci->prob_size || !eci->probs[si->prob_id]) {
+        contest_info_read_unlock(eci);
+        return;
+    }
+    if (si->lang_id <= 0 || si->lang_id >= eci->compiler_size || !eci->compilers[si->lang_id]) {
+        contest_info_read_unlock(eci);
+        return;
+    }
+    contest_info_read_unlock(eci);
+    struct EjProblemState *eps = problem_states_get(ecs->prob_states, si->prob_id);
+    problem_info_maybe_update(st->efs, ecs, eps);
+
+    struct EjProblemInfo *epi = problem_info_read_lock(eps);
+    if (!epi || !epi->ok) {
+        problem_info_read_unlock(epi);
+        return;
+    }
+    if (!epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return;
+    }
+    if (epi->compiler_size && epi->compilers) {
+        if (si->lang_id >= epi->compiler_size || !epi->compilers[si->lang_id]) {
+            problem_info_read_unlock(epi);
+            return;
+        }
+    }
+    problem_info_read_unlock(epi);
+
+    struct EjProblemCompilerSubmits *epcs = problem_submits_get(eps->submits, si->lang_id);
+    if (!epcs) {
+        return;
+    }
+
+    struct EjDirectoryNode dn;
+    int res = dir_nodes_get_node_by_fnode(epcs->dir_nodes, si->fnode, &dn);
+    if (res < 0) {
+        return;
+    }
+
+    struct EjFileNode *efn = file_nodes_get_node(st->efs->file_nodes, si->fnode);
+    if (!efn) {
+        return;
+    }
+    // FIXME: operate on EjFileNode
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed); efn = NULL;
+
+    // remove the entry
+    res = dir_nodes_unlink_node_by_fnode(epcs->dir_nodes, si->fnode, &dn);
+    if (res < 0) {
+        return;
+    }
+    efn = file_nodes_get_node(st->efs->file_nodes, si->fnode);
+    if (!efn) {
+        return;
+    }
+
+    atomic_fetch_sub_explicit(&efn->nlink, 1, memory_order_relaxed);
+    file_nodes_maybe_remove(st->efs->file_nodes, efn, st->efs->current_time_us);
 }
 
 static void *
@@ -144,6 +228,12 @@ thread_func(void *arg)
         struct EjSubmitItem *si = sli->item;
         free(sli); sli = NULL;
         if (si) {
+            // ignore names starting with dot
+            if (si->fname && si->fname[0] == '.') {
+                submit_item_free(si);
+                // also skip 5s delay
+                continue;
+            }
             thread_submit(st, si);
         }
         submit_item_free(si);
