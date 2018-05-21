@@ -32,7 +32,7 @@ struct EjFileNode
     pthread_rwlock_t rwl;
     _Atomic int refcnt;   // reference counter for pointers outside of EjFileNodes
     _Atomic int opencnt;  // open file counter
-    int nlink;            // refcounter
+    _Atomic int nlink;    // refcounter
 
     int mode;       // just permission bits
 
@@ -80,6 +80,7 @@ void file_nodes_free(struct EjFileNodes *efns);
 
 struct EjFileNode *file_nodes_get_node(struct EjFileNodes *efns, int fnode);
 void file_nodes_remove_node(struct EjFileNodes *efns, int fnode);
+void file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn);
 
 struct EjDirectoryNode *
 dir_node_create(

@@ -177,6 +177,7 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     efn->mode = mode;
     efn->size = 0;
     efn->ctime_us = efr->ejs->current_time_us;
+    efn->mtime_us = efr->ejs->current_time_us;
 
     pthread_rwlock_unlock(&efn->rwl);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
@@ -204,8 +205,8 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 
     pthread_rwlock_wrlock(&efn->rwl);
     int perms = efn->mode;
-    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     pthread_rwlock_unlock(&efn->rwl);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
 
     return check_perms(efr, perms, mode);
 }
@@ -417,9 +418,12 @@ ejf_unlink(struct EjFuseRequest *efr, const char *path)
     res = dir_nodes_unlink_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    /*
-FIXME: unlink fnode
-     */
+    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    if (!efn) return -ENOENT;
+
+    atomic_fetch_sub_explicit(&efn->nlink, 1, memory_order_relaxed);
+    file_nodes_maybe_remove(efr->ejs->file_nodes, efn);
+
     return 0;
 }
 

@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <assert.h>
 
 struct EjFileNode *
 file_node_create(int fnode)
@@ -142,6 +143,47 @@ file_nodes_remove_node(struct EjFileNodes *efns, int fnode)
     pthread_rwlock_unlock(&efns->rwl);
 }
 
+// efn is an owned pointer
+void
+file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn)
+{
+    if (atomic_load_explicit(&efn->nlink, memory_order_relaxed) > 0
+        || atomic_load_explicit(&efn->opencnt, memory_order_relaxed) > 0) return;
+
+    pthread_rwlock_wrlock(&efns->rwl);
+    int low = 0, high = efns->size;
+    struct EjFileNode *rmn = NULL;
+    while (low < high) {
+        int mid = (low + high) / 2;
+        struct EjFileNode *tmp = efns->nodes[mid];
+        if (tmp->fnode == efn->fnode) {
+            assert(tmp == efn);
+            low = mid;
+            rmn = tmp;
+            break;
+        } else if (tmp->fnode < efn->fnode) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    if (!rmn) {
+        atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
+        pthread_rwlock_unlock(&efns->rwl);
+        return;
+    }
+    if (low < efns->size - 1) {
+        memmove(&efns->nodes[low], &efns->nodes[low + 1], (efns->size - low - 1) * sizeof(efns->nodes[0]));
+    }
+    --efns->size;
+    if (atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed) <= 1) {
+        file_node_free(rmn);
+    } else {
+        rmn->reclaim_next = efns->reclaim_first;
+        efns->reclaim_first = rmn;
+    }
+    pthread_rwlock_unlock(&efns->rwl);
+}
 
 struct EjDirectoryNode *
 dir_node_create(
