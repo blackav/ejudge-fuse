@@ -108,8 +108,10 @@ dir_nodes_open_node(
         struct EjFileNodes *efns,
         const unsigned char *name,
         size_t len,
-        int excl_mode,
         int create_mode,
+        int excl_mode,
+        int perms,                    // for created files
+        long long current_time_us,    // for timestamps for created files
         struct EjDirectoryNode *res);
 int
 dir_nodes_unlink_node(

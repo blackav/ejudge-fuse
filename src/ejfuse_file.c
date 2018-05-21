@@ -269,8 +269,10 @@ dir_nodes_open_node(
         struct EjFileNodes *efns,
         const unsigned char *name,
         size_t len,
-        int excl_mode,
         int create_mode,
+        int excl_mode,
+        int perms,                    // for created files
+        long long current_time_us,    // for timestamps for created files
         struct EjDirectoryNode *res)
 {
     if (len > NAME_MAX) return -ENAMETOOLONG;
@@ -306,6 +308,9 @@ dir_nodes_open_node(
         retval = -EMFILE;
         goto done;
     }
+    efn->mode = perms & 0777;
+    efn->ctime_us = current_time_us;
+    efn->mtime_us = current_time_us;
 
     if (edns->size == edns->reserved) {
         if (!(edns->reserved *= 2)) edns->reserved = 16;
