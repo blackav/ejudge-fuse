@@ -104,6 +104,11 @@ dir_nodes_get_node(
         size_t len,
         struct EjDirectoryNode *res);
 int
+dir_nodes_get_node_by_fnode(
+        struct EjDirectoryNodes *edns,
+        int fnode,
+        struct EjDirectoryNode *res);
+int
 dir_nodes_open_node(
         struct EjDirectoryNodes *edns,
         struct EjFileNodes *efns,

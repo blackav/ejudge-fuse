@@ -264,6 +264,27 @@ dir_nodes_get_node(
 }
 
 int
+dir_nodes_get_node_by_fnode(
+        struct EjDirectoryNodes *edns,
+        int fnode,
+        struct EjDirectoryNode *res)
+{
+    // only linear scan here :(
+    int retval = -ENOENT;
+    pthread_rwlock_rdlock(&edns->rwl);
+    for (int i = 0; i < edns->size; ++i) {
+        struct EjDirectoryNode *tmp = edns->nodes[i];
+        if (tmp->fnode == fnode) {
+            memcpy(res, tmp, sizeof(*res));
+            retval = 0;
+            break;
+        }
+    }
+    pthread_rwlock_unlock(&edns->rwl);
+    return retval;
+}
+
+int
 dir_nodes_open_node(
         struct EjDirectoryNodes *edns,
         struct EjFileNodes *efns,
