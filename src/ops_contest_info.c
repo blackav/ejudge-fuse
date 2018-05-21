@@ -28,7 +28,7 @@
 #include <string.h>
 
 static int
-ejf_contest_info_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
+ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
     struct EjFuseState *ejs = efr->ejs;
     struct EjContestState *ecs = efr->ecs;
@@ -67,7 +67,7 @@ done:
 }
 
 static int
-ejf_contest_info_access(struct EjFuseRequest *efr, const char *path, int mode)
+ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
     struct EjContestState *ecs = efr->ecs;
     int retval = -ENOENT;
@@ -99,7 +99,7 @@ done:
 }
 
 static int
-ejf_contest_info_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
     if (!eci || !eci->ok || !eci->info_json_text) {
@@ -118,7 +118,7 @@ ejf_contest_info_open(struct EjFuseRequest *efr, const char *path, struct fuse_f
 }
 
 static int
-ejf_contest_info_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
+ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
 {
     int retval = 0;
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
@@ -143,14 +143,14 @@ cleanup:
 }
 
 static int
-ejf_contest_info_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
     return 0;
 }
 
 const struct EjFuseOperations ejfuse_contest_info_operations =
 {
-    ejf_contest_info_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
+    ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
     ejf_generic_readlink, //int (*readlink)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_mknod, //int (*mknod)(struct EjFuseRequest *, const char *, mode_t, dev_t);
     ejf_generic_mkdir, //int (*mkdir)(struct EjFuseRequest *, const char *, mode_t);
@@ -162,12 +162,12 @@ const struct EjFuseOperations ejfuse_contest_info_operations =
     ejf_generic_chmod, //int (*chmod)(struct EjFuseRequest *, const char *, mode_t);
     ejf_generic_chown, //int (*chown)(struct EjFuseRequest *, const char *, uid_t, gid_t);
     ejf_generic_truncate, //int (*truncate)(struct EjFuseRequest *, const char *, off_t);
-    ejf_contest_info_open, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    ejf_contest_info_read, //int (*read)(struct EjFuseRequest *, const char *, char *, size_t, off_t, struct fuse_file_info *);
+    ejf_open, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_read, //int (*read)(struct EjFuseRequest *, const char *, char *, size_t, off_t, struct fuse_file_info *);
     ejf_generic_write, //int (*write)(struct EjFuseRequest *, const char *, const char *, size_t, off_t, struct fuse_file_info *);
     ejf_generic_statfs, //int (*statfs)(struct EjFuseRequest *, const char *, struct statvfs *);
     ejf_generic_flush, //int (*flush)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    ejf_contest_info_release, //int (*release)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_release, //int (*release)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsync, //int (*fsync)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
     ejf_generic_setxattr, //int (*setxattr)(struct EjFuseRequest *, const char *, const char *, const char *, size_t, int);
     ejf_generic_getxattr, //int (*getxattr)(struct EjFuseRequest *, const char *, const char *, char *, size_t);
@@ -177,7 +177,7 @@ const struct EjFuseOperations ejfuse_contest_info_operations =
     ejf_generic_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
     ejf_generic_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
-    ejf_contest_info_access, //int (*access)(struct EjFuseRequest *, const char *, int);
+    ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
     ejf_generic_create, //int (*create)(struct EjFuseRequest *, const char *, mode_t, struct fuse_file_info *);
     ejf_generic_ftruncate, //int (*ftruncate)(struct EjFuseRequest *, const char *, off_t, struct fuse_file_info *);
     ejf_generic_fgetattr, //int (*fgetattr)(struct EjFuseRequest *, const char *, struct stat *, struct fuse_file_info *);

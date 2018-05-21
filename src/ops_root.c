@@ -27,7 +27,7 @@
 #include <limits.h>
 
 static int
-ejf_root_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
+ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
     struct EjFuseState *ejs = efr->ejs;
 
@@ -53,7 +53,7 @@ ejf_root_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 }
 
 static int
-ejf_root_access(struct EjFuseRequest *efr, const char *path, int mode)
+ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
     int perms = EJFUSE_DIR_PERMS;
     mode &= 07;
@@ -119,7 +119,7 @@ struct fuse_file_info {
 #endif
 
 static int
-ejf_root_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
     if (efr->ejs->owner_uid != efr->fx->uid) {
         return -EPERM;
@@ -142,7 +142,7 @@ typedef int (*fuse_fill_dir_t) (void *buf, const char *name,
 #endif
 
 static int
-ejf_root_readdir(
+ejf_readdir(
         struct EjFuseRequest *efr,
         const char *path,
         void *buf,
@@ -173,7 +173,7 @@ ejf_root_readdir(
 }
 
 static int
-ejf_root_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+ejf_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
     return 0;
 }
@@ -181,7 +181,7 @@ ejf_root_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_fil
 // operations for root (/) path
 const struct EjFuseOperations ejfuse_root_operations =
 {
-    ejf_root_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
+    ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
     ejf_generic_readlink, //int (*readlink)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_mknod, //int (*mknod)(struct EjFuseRequest *, const char *, mode_t, dev_t);
     ejf_generic_mkdir, //int (*mkdir)(struct EjFuseRequest *, const char *, mode_t);
@@ -204,11 +204,11 @@ const struct EjFuseOperations ejfuse_root_operations =
     ejf_generic_getxattr, //int (*getxattr)(struct EjFuseRequest *, const char *, const char *, char *, size_t);
     ejf_generic_listxattr, //int (*listxattr)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_removexattr, //int (*removexattr)(struct EjFuseRequest *, const char *, const char *);
-    ejf_root_opendir, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    ejf_root_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
-    ejf_root_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_opendir, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
+    ejf_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
-    ejf_root_access, //int (*access)(struct EjFuseRequest *, const char *, int);
+    ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
     ejf_generic_create, //int (*create)(struct EjFuseRequest *, const char *, mode_t, struct fuse_file_info *);
     ejf_generic_ftruncate, //int (*ftruncate)(struct EjFuseRequest *, const char *, off_t, struct fuse_file_info *);
     ejf_generic_fgetattr, //int (*fgetattr)(struct EjFuseRequest *, const char *, struct stat *, struct fuse_file_info *);
