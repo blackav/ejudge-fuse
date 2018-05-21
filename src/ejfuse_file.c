@@ -85,6 +85,7 @@ file_nodes_create_node(struct EjFileNodes *efns)
         efns->nodes = realloc(efns->nodes, efns->reserved * sizeof(efns->nodes[0]));
     }
     efns->nodes[efns->size++] = retval = file_node_create(efns->serial++);
+    atomic_fetch_add_explicit(&retval->refcnt, 1, memory_order_relaxed);
     pthread_rwlock_unlock(&efns->rwl);
     return retval;
 }
@@ -267,6 +268,8 @@ dir_nodes_open_node(
     }
     edns->nodes[low] = dir_node_create(efn->fnode, name, len);
     ++edns->size;
+    atomic_fetch_add_explicit(&efn->nlink, 1, memory_order_relaxed);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     memcpy(res, edns->nodes[low], sizeof(*res));
     retval = 0;
 

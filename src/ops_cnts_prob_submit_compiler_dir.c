@@ -175,7 +175,6 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     pthread_rwlock_wrlock(&efn->rwl);
 
     efn->mode = mode;
-    efn->nlink = 1;
     efn->size = 0;
     efn->ctime_us = efr->ejs->current_time_us;
 
