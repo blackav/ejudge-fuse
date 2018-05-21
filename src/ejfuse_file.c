@@ -83,13 +83,15 @@ file_nodes_create_node(struct EjFileNodes *efns)
 {
     struct EjFileNode *retval = NULL;
     pthread_rwlock_wrlock(&efns->rwl);
-    if (efns->size == efns->reserved) {
-        if (!(efns->reserved *= 2)) efns->reserved = 32;
-        efns->nodes = realloc(efns->nodes, efns->reserved * sizeof(efns->nodes[0]));
+    if (efns->node_quota <= 0 || efns->size < efns->node_quota) {
+        if (efns->size == efns->reserved) {
+            if (!(efns->reserved *= 2)) efns->reserved = 32;
+            efns->nodes = realloc(efns->nodes, efns->reserved * sizeof(efns->nodes[0]));
+        }
+        efns->nodes[efns->size++] = retval = file_node_create(efns->serial++);
+        atomic_fetch_add_explicit(&retval->refcnt, 1, memory_order_relaxed);
+        pthread_rwlock_unlock(&efns->rwl);
     }
-    efns->nodes[efns->size++] = retval = file_node_create(efns->serial++);
-    atomic_fetch_add_explicit(&retval->refcnt, 1, memory_order_relaxed);
-    pthread_rwlock_unlock(&efns->rwl);
     return retval;
 }
 
@@ -119,7 +121,7 @@ file_nodes_get_node(struct EjFileNodes *efns, int fnode)
 }
 
 void
-file_nodes_remove_node(struct EjFileNodes *efns, int fnode)
+unused_file_nodes_remove_node(struct EjFileNodes *efns, int fnode)
 {
     pthread_rwlock_wrlock(&efns->rwl);
     if (efns->size > 0 && fnode >= efns->nodes[0]->fnode && fnode <= efns->nodes[efns->size - 1]->fnode) {
@@ -178,6 +180,7 @@ file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn, long l
         memmove(&efns->nodes[low], &efns->nodes[low + 1], (efns->size - low - 1) * sizeof(efns->nodes[0]));
     }
     --efns->size;
+    efns->total_size -= rmn->size;
     if (atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed) <= 1) {
         file_node_free(rmn);
     } else {
