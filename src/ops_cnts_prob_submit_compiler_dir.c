@@ -368,7 +368,7 @@ ejf_truncate(struct EjFuseRequest *efr, const char *path, off_t offset)
     pthread_rwlock_wrlock(&efn->rwl);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
-    if ((res = file_node_truncate_unlocked(efn, offset)) < 0) goto out;
+    if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
 
     efn->mtime_us = efr->ejs->current_time_us;
     res = 0;
@@ -391,7 +391,7 @@ ejf_ftruncate(struct EjFuseRequest *efr, const char *path, off_t offset, struct 
     pthread_rwlock_wrlock(&efn->rwl);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
-    if ((res = file_node_truncate_unlocked(efn, offset)) < 0) goto out;
+    if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
 
     efn->mtime_us = efr->ejs->current_time_us;
     res = 0;
@@ -503,7 +503,7 @@ ejf_write(
         goto out;
     }
     if (new_size > efn->size) {
-        if ((res = file_node_truncate_unlocked(efn, new_size)) < 0)
+        if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, new_size)) < 0)
             goto out;
     }
 

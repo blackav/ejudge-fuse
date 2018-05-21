@@ -180,7 +180,7 @@ file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn, long l
         memmove(&efns->nodes[low], &efns->nodes[low + 1], (efns->size - low - 1) * sizeof(efns->nodes[0]));
     }
     --efns->size;
-    efns->total_size -= rmn->size;
+    atomic_fetch_sub_explicit(&efns->total_size, rmn->size, memory_order_relaxed);
     if (atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed) <= 1) {
         file_node_free(rmn);
     } else {
@@ -410,22 +410,35 @@ file_node_reserve_unlocked(struct EjFileNode *efn, off_t offset)
 }
 
 int
-file_node_truncate_unlocked(struct EjFileNode *efn, off_t offset)
+file_node_truncate_unlocked(struct EjFileNodes *efns, struct EjFileNode *efn, off_t offset)
 {
     if (offset < 0) return -EINVAL;
     int ioff = offset;
     if (ioff != offset) return -EINVAL;
     if (ioff == efn->size) return 0;
     if (ioff < efn->size) {
+        int diff = efn->size - ioff;
+        atomic_fetch_sub_explicit(&efns->total_size, diff, memory_order_relaxed);
         memset(efn->data + ioff, 0, efn->size - ioff);
         efn->size = ioff;
         return 0;
+    }
+
+    // race condition on total_size between check and add
+    int diff = ioff - efns->size;
+    int new_size;
+    if (__builtin_add_overflow(efns->total_size, diff, &new_size)) {
+        return -EIO;
+    }
+    if (efns->size_quota > 0 && new_size > efns->size_quota) {
+        return -EIO;
     }
 
     int res = file_node_reserve_unlocked(efn, ioff);
     if (res < 0) return res;
 
     efn->size = ioff;
+    atomic_fetch_add_explicit(&efns->total_size, diff, memory_order_relaxed);
     return 0;
 }
 
@@ -434,6 +447,9 @@ file_nodes_list(struct EjFileNodes *efns)
 {
     if (!efns) return;
     pthread_rwlock_rdlock(&efns->rwl);
+    if (efns->size > 0 && efns->reclaim_first) {
+        fprintf(stderr, "NODES: nodes: %d, size: %d\n", efns->size, efns->total_size);
+    }
     for (int i = 0; i < efns->size; ++i) {
         struct EjFileNode *efn = efns->nodes[i];
         fprintf(stderr, "[%d]: %d, %d, %d, %d, %d\n", i, efn->fnode, efn->refcnt, efn->opencnt, efn->nlink, efn->size);

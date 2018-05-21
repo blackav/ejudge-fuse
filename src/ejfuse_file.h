@@ -58,7 +58,7 @@ struct EjFileNodes
     int size;
     struct EjFileNode **nodes;
     struct EjFileNode *reclaim_first;
-    int total_size;   // total size of files
+    _Atomic int total_size;   // total size of files
 };
 
 struct EjDirectoryNode
@@ -124,6 +124,6 @@ int dir_nodes_size(struct EjDirectoryNodes *edns);
 int dir_nodes_read(struct EjDirectoryNodes *edns, int index, struct EjDirectoryNode *res);
 
 int file_node_reserve_unlocked(struct EjFileNode *efn, off_t offset);
-int file_node_truncate_unlocked(struct EjFileNode *efn, off_t offset);
+int file_node_truncate_unlocked(struct EjFileNodes *efns, struct EjFileNode *efn, off_t offset);
 
 void file_nodes_list(struct EjFileNodes *efns);
