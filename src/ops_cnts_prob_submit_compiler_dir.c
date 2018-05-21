@@ -534,6 +534,49 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     return 0;
 }
 
+static int
+ejf_utimens(struct EjFuseRequest *efr, const char *path, const struct timespec tv[2])
+{
+    long long atime_us = tv[0].tv_sec;
+    long long mtime_us = tv[1].tv_sec;
+
+    if (__builtin_mul_overflow(atime_us, 1000000LL, &atime_us)
+        || __builtin_add_overflow(atime_us, tv[0].tv_nsec / 1000LL, &atime_us)
+        || __builtin_mul_overflow(mtime_us, 1000000LL, &mtime_us)
+        || __builtin_add_overflow(mtime_us, tv[1].tv_nsec / 1000LL, &mtime_us)) {
+        return -EINVAL;
+    }
+
+    size_t name_len = strlen(efr->file_name);
+    if (name_len > NAME_MAX) return -ENAMETOOLONG;
+
+    int res = check_lang(efr);
+    if (res < 0) return res;
+
+    struct EjProblemCompilerSubmits *epcs = problem_submits_get(efr->eps->submits, efr->lang_id);
+    if (!epcs) return -ENOENT;
+
+    struct EjDirectoryNode dn;
+    res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
+    if (res < 0) return res;
+
+    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    if (!efn) return -ENOENT;
+
+    pthread_rwlock_wrlock(&efn->rwl);
+
+    if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
+
+    efn->atime_us = atime_us;
+    efn->mtime_us = mtime_us;
+    res = 0;
+
+out:
+    pthread_rwlock_unlock(&efn->rwl);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
+    return res;
+}
+
 const struct EjFuseOperations ejfuse_contest_problem_submit_compiler_dir_operations =
 {
     ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
@@ -568,7 +611,7 @@ const struct EjFuseOperations ejfuse_contest_problem_submit_compiler_dir_operati
     ejf_ftruncate, //int (*ftruncate)(struct EjFuseRequest *, const char *, off_t, struct fuse_file_info *);
     ejf_fgetattr, //int (*fgetattr)(struct EjFuseRequest *, const char *, struct stat *, struct fuse_file_info *);
     ejf_generic_lock, //int (*lock)(struct EjFuseRequest *, const char *, struct fuse_file_info *, int cmd, struct flock *);
-    ejf_generic_utimens, //int (*utimens)(struct EjFuseRequest *, const char *, const struct timespec tv[2]);
+    ejf_utimens, //int (*utimens)(struct EjFuseRequest *, const char *, const struct timespec tv[2]);
     ejf_generic_bmap, //int (*bmap)(struct EjFuseRequest *, const char *, size_t blocksize, uint64_t *idx);
     ejf_generic_ioctl, //int (*ioctl)(struct EjFuseRequest *, const char *, int cmd, void *arg, struct fuse_file_info *, unsigned int flags, void *data);
     ejf_generic_poll, //int (*poll)(struct EjFuseRequest *, const char *, struct fuse_file_info *, struct fuse_pollhandle *ph, unsigned *reventsp);
