@@ -206,52 +206,6 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     return check_perms(efr, perms, mode);
 }
 
-#if 0
-struct fuse_file_info {
-	/** Open flags.	 Available in open() and release() */
-	int flags;
-
-	/** Old file handle, don't use */
-	unsigned long fh_old;
-
-	/** In case of a write operation indicates if this was caused by a
-	    writepage */
-	int writepage;
-
-	/** Can be filled in by open, to use direct I/O on this file.
-	    Introduced in version 2.4 */
-	unsigned int direct_io : 1;
-
-	/** Can be filled in by open, to indicate, that cached file data
-	    need not be invalidated.  Introduced in version 2.4 */
-	unsigned int keep_cache : 1;
-
-	/** Indicates a flush operation.  Set in flush operation, also
-	    maybe set in highlevel lock operation and lowlevel release
-	    operation.	Introduced in version 2.6 */
-	unsigned int flush : 1;
-
-	/** Can be filled in by open, to indicate that the file is not
-	    seekable.  Introduced in version 2.8 */
-	unsigned int nonseekable : 1;
-
-	/* Indicates that flock locks for this file should be
-	   released.  If set, lock_owner shall contain a valid value.
-	   May only be set in ->release().  Introduced in version
-	   2.9 */
-	unsigned int flock_release : 1;
-
-	/** Padding.  Do not use*/
-	unsigned int padding : 27;
-
-	/** File handle.  May be filled in by filesystem in open().
-	    Available in all other file operations */
-	uint64_t fh;
-
-	/** Lock owner id.  Available in locking operations and flush */
-	uint64_t lock_owner;
-};
-#endif
 static int
 ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
