@@ -31,7 +31,7 @@
 
 void
 contest_log_format(
-        struct EjFuseState *ejs,
+        long long current_time_us,
         struct EjContestState *ecs,
         const char *action,
         int success,
@@ -320,7 +320,7 @@ ejudge_client_enter_contest_request(
     }
 
     // normal return
-    contest_log_format(ejs, ecs, "enter-contest-json", 1, "%s %s %lld", ecc->session_id, ecc->client_key, ecc->expire_us);
+    contest_log_format(current_time_us, ecs, "enter-contest-json", 1, "%s %s %lld", ecc->session_id, ecc->client_key, ecc->expire_us);
     ecc->log_s = NULL;
     ecc->recheck_time_us = 0;
     ecc->ok = 1;
@@ -350,7 +350,7 @@ failed:
     }
     ecc->log_s = err_s; err_s = NULL;
     ecc->recheck_time_us = current_time_us + 10000000; // 10s
-    contest_log_format(ejs, ecs, "enter-contest-json", 1, NULL);
+    contest_log_format(current_time_us, ecs, "enter-contest-json", 1, NULL);
     goto cleanup;
 }
 
@@ -535,7 +535,7 @@ failed:
     }
     eci->log_s = err_s; err_s = NULL;
     eci->recheck_time_us = current_time_us + 10000000; // 10s
-    contest_log_format(ejs, ecs, "contest-status-json", 0, NULL);
+    contest_log_format(current_time_us, ecs, "contest-status-json", 0, NULL);
     goto cleanup;
 }
 
@@ -979,7 +979,7 @@ failed:
     }
     epi->log_s = err_s; err_s = NULL;
     epi->recheck_time_us = current_time_us + 10000000; // 10s
-    contest_log_format(ejs, ecs, "contest-problem-json", 0, NULL);
+    contest_log_format(current_time_us, ecs, "contest-problem-json", 0, NULL);
     goto cleanup;
 }
 
@@ -1066,6 +1066,6 @@ failed:
     }
     eph->log_s = err_s; err_s = NULL;
     eph->recheck_time_us = current_time_us + 10000000; // 10s
-    contest_log_format(ejs, ecs, "problem-statement-json", 0, NULL);
+    contest_log_format(current_time_us, ecs, "problem-statement-json", 0, NULL);
     goto cleanup;
 }
