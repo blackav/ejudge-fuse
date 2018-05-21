@@ -145,7 +145,7 @@ file_nodes_remove_node(struct EjFileNodes *efns, int fnode)
 
 // efn is an owned pointer
 void
-file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn)
+file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn, long long current_time_us)
 {
     if (atomic_load_explicit(&efn->nlink, memory_order_relaxed) > 0
         || atomic_load_explicit(&efn->opencnt, memory_order_relaxed) > 0) return;
@@ -181,6 +181,7 @@ file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn)
     } else {
         rmn->reclaim_next = efns->reclaim_first;
         efns->reclaim_first = rmn;
+        rmn->dtime_us = current_time_us;
     }
     pthread_rwlock_unlock(&efns->rwl);
 }
@@ -431,6 +432,13 @@ file_nodes_list(struct EjFileNodes *efns)
     for (int i = 0; i < efns->size; ++i) {
         struct EjFileNode *efn = efns->nodes[i];
         fprintf(stderr, "[%d]: %d, %d, %d, %d, %d\n", i, efn->fnode, efn->refcnt, efn->opencnt, efn->nlink, efn->size);
+    }
+    if (efns->reclaim_first) {
+        int serial = 0;
+        fprintf(stderr, "RECLAIM:\n");
+        for (struct EjFileNode *efn = efns->reclaim_first; efn; efn = efn->reclaim_next) {
+            fprintf(stderr, "[%d]: %d, %d, %d, %d, %d, %lld\n", serial++, efn->fnode, efn->refcnt, efn->opencnt, efn->nlink, efn->size, efn->dtime_us);
+        }
     }
     pthread_rwlock_unlock(&efns->rwl);
 }

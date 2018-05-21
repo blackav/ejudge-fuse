@@ -422,7 +422,7 @@ ejf_unlink(struct EjFuseRequest *efr, const char *path)
     if (!efn) return -ENOENT;
 
     atomic_fetch_sub_explicit(&efn->nlink, 1, memory_order_relaxed);
-    file_nodes_maybe_remove(efr->ejs->file_nodes, efn);
+    file_nodes_maybe_remove(efr->ejs->file_nodes, efn, efr->ejs->current_time_us);
 
     return 0;
 }

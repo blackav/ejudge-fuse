@@ -39,7 +39,7 @@ struct EjFileNode
     long long atime_us;
     long long mtime_us;
     long long ctime_us;
-    long long dname_us;
+    long long dtime_us;
 
     int size;      // int - intentionally, we don't want too big files (>= 2G)
     int reserved;  // int - intentionally, we don't want too big files (>= 2G)
@@ -80,7 +80,7 @@ void file_nodes_free(struct EjFileNodes *efns);
 
 struct EjFileNode *file_nodes_get_node(struct EjFileNodes *efns, int fnode);
 void file_nodes_remove_node(struct EjFileNodes *efns, int fnode);
-void file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn);
+void file_nodes_maybe_remove(struct EjFileNodes *efns, struct EjFileNode *efn, long long current_time_us);
 
 struct EjDirectoryNode *
 dir_node_create(
