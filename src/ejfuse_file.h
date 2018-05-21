@@ -50,11 +50,15 @@ struct EjFileNodes
 {
     pthread_rwlock_t rwl;
 
+    int node_quota;
+    int size_quota;
+
     int serial;
     int reserved;
     int size;
     struct EjFileNode **nodes;
     struct EjFileNode *reclaim_first;
+    int total_size;   // total size of files
 };
 
 struct EjDirectoryNode
@@ -75,7 +79,7 @@ struct EjDirectoryNodes
 struct EjFileNode *file_node_create(int fnode);
 void file_node_free(struct EjFileNode *efn);
 
-struct EjFileNodes *file_nodes_create(void);
+struct EjFileNodes *file_nodes_create(int node_quota, int size_quota);
 void file_nodes_free(struct EjFileNodes *efns);
 
 struct EjFileNode *file_nodes_get_node(struct EjFileNodes *efns, int fnode);

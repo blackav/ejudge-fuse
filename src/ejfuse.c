@@ -55,6 +55,9 @@
 
 enum { MAX_PROB_SHORT_NAME_SIZE = 32 };
 
+enum { NODE_QUOTA = 1024 };
+enum { SIZE_QUOTA = 16 * 1024 * 1024 };
+
 int
 ejf_generic_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *stb, struct fuse_file_info *ffi)
 {
@@ -985,7 +988,7 @@ int main(int argc, char *argv[])
     ejs->owner_gid = getgid();
     ejs->inode_hash = inode_hash_create();
     ejs->contests_state = contests_state_create();
-    ejs->file_nodes = file_nodes_create();
+    ejs->file_nodes = file_nodes_create(NODE_QUOTA, SIZE_QUOTA);
 
     update_current_time(ejs);
     ejs->start_time_us = ejs->current_time_us;

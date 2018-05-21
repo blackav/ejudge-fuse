@@ -48,11 +48,13 @@ file_node_free(struct EjFileNode *efn)
 }
 
 struct EjFileNodes *
-file_nodes_create(void)
+file_nodes_create(int node_quota, int size_quota)
 {
     struct EjFileNodes *efns = calloc(1, sizeof(*efns));
     pthread_rwlock_init(&efns->rwl, NULL);
     efns->serial = 1;
+    efns->node_quota = node_quota;
+    efns->size_quota = size_quota;
     return efns;
 }
 
