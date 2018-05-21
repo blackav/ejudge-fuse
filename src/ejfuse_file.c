@@ -390,6 +390,32 @@ done:
     return retval;
 }
 
+int
+dir_nodes_unlink_node_by_fnode(
+        struct EjDirectoryNodes *edns,
+        int fnode,
+        struct EjDirectoryNode *res)
+{
+    int retval = -ENOENT;
+    pthread_rwlock_wrlock(&edns->rwl);
+    for (int i = 0; i < edns->size; ++i) {
+        struct EjDirectoryNode *tmp = edns->nodes[i];
+        if (tmp->fnode == fnode) {
+            memcpy(res, tmp, sizeof(*res));
+            free(tmp);
+            edns->nodes[i] = NULL;
+            if (i < edns->size - 1) {
+                memmove(&edns->nodes[i], &edns->nodes[i + 1], (edns->size - i - 1) * sizeof(edns->nodes[0]));
+            }
+            --edns->size;
+            retval = 0;
+            break;
+        }
+    }
+    pthread_rwlock_unlock(&edns->rwl);
+    return retval;
+}
+
 void
 dir_nodes_lock(struct EjDirectoryNodes *edns)
 {

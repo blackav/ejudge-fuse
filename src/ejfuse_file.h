@@ -125,6 +125,11 @@ dir_nodes_unlink_node(
         const unsigned char *name,
         size_t len,
         struct EjDirectoryNode *res);
+int
+dir_nodes_unlink_node_by_fnode(
+        struct EjDirectoryNodes *edns,
+        int fnode,
+        struct EjDirectoryNode *res);
 
 void dir_nodes_lock(struct EjDirectoryNodes *edns);
 void dir_nodes_unlock(struct EjDirectoryNodes *edns);
