@@ -425,7 +425,7 @@ file_node_truncate_unlocked(struct EjFileNodes *efns, struct EjFileNode *efn, of
     }
 
     // race condition on total_size between check and add
-    int diff = ioff - efns->size;
+    int diff = ioff - efn->size;
     int new_size;
     if (__builtin_add_overflow(efns->total_size, diff, &new_size)) {
         return -EIO;
@@ -447,7 +447,7 @@ file_nodes_list(struct EjFileNodes *efns)
 {
     if (!efns) return;
     pthread_rwlock_rdlock(&efns->rwl);
-    if (efns->size > 0 && efns->reclaim_first) {
+    if (efns->size > 0 || efns->reclaim_first) {
         fprintf(stderr, "NODES: nodes: %d, size: %d\n", efns->size, efns->total_size);
     }
     for (int i = 0; i < efns->size; ++i) {
