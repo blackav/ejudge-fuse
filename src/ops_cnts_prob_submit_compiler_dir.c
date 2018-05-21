@@ -527,6 +527,7 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     // send the submit!
     pthread_rwlock_unlock(&efn->rwl);
     atomic_fetch_sub_explicit(&efn->opencnt, 1, memory_order_relaxed);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return 0;
 }
 
