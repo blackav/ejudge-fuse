@@ -42,6 +42,7 @@ void
 ejudge_client_get_contest_list_request(
         struct EjFuseState *ejs,
         const struct EjSessionValue *esv,
+        long long current_time_us, 
         struct EjContestList *contests)
 {
     CURL *curl = NULL;
@@ -188,7 +189,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     contests->log_s = err_s; err_s = NULL;
-    contests->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    contests->recheck_time_us = current_time_us + 10000000; // 10s
     goto cleanup;
 }
 
@@ -197,6 +198,7 @@ ejudge_client_enter_contest_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
+        long long current_time_us,
         struct EjContestSession *ecc) // output
 {
     CURL *curl = NULL;
@@ -347,7 +349,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     ecc->log_s = err_s; err_s = NULL;
-    ecc->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    ecc->recheck_time_us = current_time_us + 10000000; // 10s
     contest_log_format(ejs, ecs, "enter-contest-json", 1, NULL);
     goto cleanup;
 }
@@ -357,6 +359,7 @@ ejudge_client_contest_info_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
+        long long current_time_us,
         struct EjContestInfo *eci) // output
 {
     char *err_s = NULL;
@@ -507,7 +510,7 @@ ejudge_client_contest_info_request(
     // normal return
     //contest_log_format(ejs, ecs, "contest-status-json", 1, NULL);
     eci->log_s = NULL;
-    eci->recheck_time_us = ejs->current_time_us + 10000000; // +10s
+    eci->recheck_time_us = current_time_us + 10000000; // +10s
     eci->ok = 1;
 
 cleanup:
@@ -531,7 +534,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     eci->log_s = err_s; err_s = NULL;
-    eci->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    eci->recheck_time_us = current_time_us + 10000000; // 10s
     contest_log_format(ejs, ecs, "contest-status-json", 0, NULL);
     goto cleanup;
 }
@@ -568,6 +571,7 @@ ejudge_client_problem_info_request(
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
+        long long current_time_us,
         struct EjProblemInfo *epi) // output
 {
     char *err_s = NULL;
@@ -948,7 +952,7 @@ ejudge_client_problem_info_request(
     // normal return
     //contest_log_format(ejs, ecs, "contest-status-json", 1, NULL);
     epi->log_s = NULL;
-    epi->recheck_time_us = ejs->current_time_us + 10000000; // +10s
+    epi->recheck_time_us = current_time_us + 10000000; // +10s
     epi->ok = 1;
 
 cleanup:
@@ -974,7 +978,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     epi->log_s = err_s; err_s = NULL;
-    epi->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    epi->recheck_time_us = current_time_us + 10000000; // 10s
     contest_log_format(ejs, ecs, "contest-problem-json", 0, NULL);
     goto cleanup;
 }
@@ -985,6 +989,7 @@ ejudge_client_problem_statement_request(
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
+        long long current_time_us,
         struct EjProblemStatement *eph) // output
 {
     char *err_s = NULL;
@@ -1040,7 +1045,7 @@ ejudge_client_problem_statement_request(
     eph->stmt_size = strlen(eph->stmt_text);
 
     eph->log_s = NULL;
-    eph->recheck_time_us = ejs->current_time_us + 10000000; // +10s
+    eph->recheck_time_us = current_time_us + 10000000; // +10s
     eph->ok = 1;
 
 cleanup:
@@ -1060,7 +1065,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     eph->log_s = err_s; err_s = NULL;
-    eph->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    eph->recheck_time_us = current_time_us + 10000000; // 10s
     contest_log_format(ejs, ecs, "problem-statement-json", 0, NULL);
     goto cleanup;
 }

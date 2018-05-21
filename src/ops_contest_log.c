@@ -47,7 +47,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     struct EjContestLog *cnts_log = contests_log_read_lock(ejs->contests_state, efr->contest_id);
     stb->st_size = cnts_log->size;
     contests_log_read_unlock(cnts_log);
-    long long current_time_us = ejs->current_time_us;
+    long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
     stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;

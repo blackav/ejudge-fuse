@@ -170,7 +170,7 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     if (!epcs) return -ENOENT;
 
     struct EjDirectoryNode dn;
-    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 1, mode, efr->ejs->current_time_us, &dn);
+    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 1, mode, efr->current_time_us, &dn);
     if (res < 0) return res;
 
     return 0;
@@ -247,10 +247,10 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
     if ((open_mode == O_WRONLY || open_mode == O_RDWR) && (ffi->flags & O_TRUNC)) {
         // truncate output
         efn->size = 0;
-        efn->mtime_us = efr->ejs->current_time_us;
+        efn->mtime_us = efr->current_time_us;
     }
 
-    efn->atime_us = efr->ejs->current_time_us;
+    efn->atime_us = efr->current_time_us;
     atomic_fetch_add_explicit(&efn->opencnt, 1, memory_order_relaxed);
     ffi->fh = dn.fnode;
 
@@ -291,7 +291,7 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
     if (!epcs) return -ENOENT;
 
     struct EjDirectoryNode dn;
-    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 0, mode, efr->ejs->current_time_us, &dn);
+    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 0, mode, efr->current_time_us, &dn);
     if (res < 0) return res;
 
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
@@ -308,10 +308,10 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
     if ((open_mode == O_WRONLY || open_mode == O_RDWR) && (ffi->flags & O_TRUNC)) {
         // truncate output
         efn->size = 0;
-        efn->mtime_us = efr->ejs->current_time_us;
+        efn->mtime_us = efr->current_time_us;
     }
 
-    efn->atime_us = efr->ejs->current_time_us;
+    efn->atime_us = efr->current_time_us;
     atomic_fetch_add_explicit(&efn->opencnt, 1, memory_order_relaxed);
     ffi->fh = dn.fnode;
 
@@ -351,7 +351,7 @@ ejf_truncate(struct EjFuseRequest *efr, const char *path, off_t offset)
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
     if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
 
-    efn->mtime_us = efr->ejs->current_time_us;
+    efn->mtime_us = efr->current_time_us;
     res = 0;
 
 out:
@@ -374,7 +374,7 @@ ejf_ftruncate(struct EjFuseRequest *efr, const char *path, off_t offset, struct 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
     if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
 
-    efn->mtime_us = efr->ejs->current_time_us;
+    efn->mtime_us = efr->current_time_us;
     res = 0;
 
 out:
@@ -403,7 +403,7 @@ ejf_unlink(struct EjFuseRequest *efr, const char *path)
     if (!efn) return -ENOENT;
 
     atomic_fetch_sub_explicit(&efn->nlink, 1, memory_order_relaxed);
-    file_nodes_maybe_remove(efr->ejs->file_nodes, efn, efr->ejs->current_time_us);
+    file_nodes_maybe_remove(efr->ejs->file_nodes, efn, efr->current_time_us);
 
     return 0;
 }
@@ -444,7 +444,7 @@ ejf_read(
     res = isize;
 
 out:
-    efn->atime_us = efr->ejs->current_time_us;
+    efn->atime_us = efr->current_time_us;
     pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
@@ -492,7 +492,7 @@ ejf_write(
     res = isize;
 
 out:
-    efn->mtime_us = efr->ejs->current_time_us;
+    efn->mtime_us = efr->current_time_us;
     pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
@@ -508,7 +508,7 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     if (!efn) return -ENOENT;
 
     submit_thread_enqueue(efr->ejs->submit_thread,
-                          submit_item_create(efr->ejs->current_time_us,
+                          submit_item_create(efr->current_time_us,
                                              efr->contest_id,
                                              efr->prob_id,
                                              efr->lang_id,

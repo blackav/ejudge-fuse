@@ -139,8 +139,8 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
     if (!ecs) {
         return;
     }
-    contest_session_maybe_update(st->efs, ecs);
-    contest_info_maybe_update(st->efs, ecs);
+    contest_session_maybe_update(st->efs, ecs, current_time_us);
+    contest_info_maybe_update(st->efs, ecs, current_time_us);
 
     struct EjContestInfo *eci = contest_info_read_lock(ecs);
     if (si->prob_id <= 0 || si->prob_id >= eci->prob_size || !eci->probs[si->prob_id]) {
@@ -153,7 +153,7 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
     }
     contest_info_read_unlock(eci);
     struct EjProblemState *eps = problem_states_get(ecs->prob_states, si->prob_id);
-    problem_info_maybe_update(st->efs, ecs, eps);
+    problem_info_maybe_update(st->efs, ecs, eps, current_time_us);
 
     struct EjProblemInfo *epi = problem_info_read_lock(eps);
     if (!epi || !epi->ok) {
@@ -201,7 +201,7 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
     }
 
     atomic_fetch_sub_explicit(&efn->nlink, 1, memory_order_relaxed);
-    file_nodes_maybe_remove(st->efs->file_nodes, efn, st->efs->current_time_us);
+    file_nodes_maybe_remove(st->efs->file_nodes, efn, current_time_us);
 }
 
 static void *

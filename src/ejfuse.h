@@ -72,7 +72,7 @@ struct EjFuseState
     long long start_time_us;
 
     // the current time (microseconds)
-    _Atomic long long current_time_us;
+    //_Atomic long long current_time_us;
 
     // top-level session info
     _Atomic _Bool top_session_update;
@@ -95,6 +95,8 @@ struct EjFuseState
 
 struct EjFuseRequest
 {
+    long long current_time_us;
+
     const struct EjFuseOperations *ops;
     struct EjFuseState *ejs;
     struct fuse_context *fx;
@@ -171,21 +173,25 @@ struct EjProblemState;
 void
 contest_session_maybe_update(
         struct EjFuseState *ejs,
-        struct EjContestState *ecs);
+        struct EjContestState *ecs,
+        long long current_time_us);
 void
 contest_info_maybe_update(
         struct EjFuseState *ejs,
-        struct EjContestState *ecs);
+        struct EjContestState *ecs,
+        long long current_time_us);
 void
 problem_info_maybe_update(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
-        struct EjProblemState *eps);
+        struct EjProblemState *eps,
+        long long current_time_us);
 void
 problem_statement_maybe_update(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
-        struct EjProblemState *eps);
+        struct EjProblemState *eps,
+        long long current_time_us);
 
 // directory structure
 #define FN_CONTEST_PROBLEM_INFO           "INFO"

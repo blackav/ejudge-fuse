@@ -48,7 +48,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     stb->st_uid = ejs->owner_uid;
     stb->st_gid = ejs->owner_gid;
     stb->st_size = 4096; // ???, but why not?
-    long long current_time_us = ejs->current_time_us;
+    long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
     stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;

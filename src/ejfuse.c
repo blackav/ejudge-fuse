@@ -65,8 +65,8 @@ ejf_generic_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *s
     return efr->ops->getattr(efr, path, stb);
 }
 
-void
-update_current_time(struct EjFuseState *ejs)
+long long
+get_current_time(void)
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -77,7 +77,7 @@ update_current_time(struct EjFuseState *ejs)
     if (__builtin_add_overflow(v1, (long long) tv.tv_usec, &v1)) {
         abort();
     }
-    ejs->current_time_us = v1;
+    return v1;
 }
 
 void
@@ -236,7 +236,7 @@ contests_is_valid(struct EjFuseState *ejs, int cnts_id)
 }
 
 void
-ej_get_top_level_session(struct EjFuseState *ejs)
+ej_get_top_level_session(struct EjFuseState *ejs, long long current_time_us)
 {
     struct EjTopSession *tls = NULL;
     char *err_s = NULL;
@@ -407,31 +407,31 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     tls->log_s = err_s; err_s = NULL;
-    tls->recheck_time_us = ejs->current_time_us + 10000000; // 10s
+    tls->recheck_time_us = current_time_us + 10000000; // 10s
     goto cleanup;
 }
 
 void
-top_session_maybe_update(struct EjFuseState *ejs)
+top_session_maybe_update(struct EjFuseState *ejs, long long current_time_us)
 {
     int update_needed = 0;
     struct EjTopSession *top_session = top_session_read_lock(ejs);
     if (top_session->ok) {
-        if (top_session->expire_us > 0 && ejs->current_time_us >= top_session->expire_us - 100000000) { // 100s
+        if (top_session->expire_us > 0 && current_time_us >= top_session->expire_us - 100000000) { // 100s
             update_needed = 1;
         }
-        if (top_session->recheck_time_us > 0 && ejs->current_time_us >= top_session->recheck_time_us) {
+        if (top_session->recheck_time_us > 0 && current_time_us >= top_session->recheck_time_us) {
             update_needed = 1;
         }
     } else {
         update_needed = 1;
-        if (top_session->recheck_time_us > 0 && ejs->current_time_us < top_session->recheck_time_us) {
+        if (top_session->recheck_time_us > 0 && current_time_us < top_session->recheck_time_us) {
             update_needed = 0;
         }
     }
     top_session_read_unlock(top_session);
     if (update_needed) {
-        ej_get_top_level_session(ejs);
+      ej_get_top_level_session(ejs, current_time_us);
     }
 }
 
@@ -453,7 +453,7 @@ top_session_copy_session(struct EjFuseState *ejs, struct EjSessionValue *esv)
 
 
 void
-ej_get_contest_list(struct EjFuseState *ejs)
+ej_get_contest_list(struct EjFuseState *ejs, long long current_time_us)
 {
     struct EjSessionValue esv = {};
     struct EjContestList *contests = NULL;
@@ -463,7 +463,7 @@ ej_get_contest_list(struct EjFuseState *ejs)
 
     contests = calloc(1, sizeof(*contests));
 
-    ejudge_client_get_contest_list_request(ejs, &esv, contests);
+    ejudge_client_get_contest_list_request(ejs, &esv, current_time_us, contests);
 
     contest_list_set(ejs, contests);
     return;
@@ -472,7 +472,7 @@ ej_get_contest_list(struct EjFuseState *ejs)
 
 void
 contest_log_format(
-        struct EjFuseState *ejs,
+        long long current_time_us,
         struct EjContestState *ecs,
         const char *action,
         int success,
@@ -480,7 +480,7 @@ contest_log_format(
     __attribute__((format(printf, 5, 6)));
 void
 contest_log_format(
-        struct EjFuseState *ejs,
+        long long current_time_us,
         struct EjContestState *ecs,
         const char *action,
         int success,
@@ -497,7 +497,7 @@ contest_log_format(
         va_end(args);
     }
 
-    time_t tt = ejs->current_time_us / 1000000;
+    time_t tt = current_time_us / 1000000;
     struct tm ltm;
     localtime_r(&tt, &ltm);
     snprintf(buf2, sizeof(buf2), "%04d-%02d-%02d %02d:%02d:%02d %s %s %s\n",
@@ -507,7 +507,10 @@ contest_log_format(
 }
 
 void
-ejudge_client_enter_contest(struct EjFuseState *ejs, struct EjContestState *ecs)
+ejudge_client_enter_contest(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        long long current_time_us)
 {
     struct EjSessionValue esv = {};
 
@@ -518,37 +521,43 @@ ejudge_client_enter_contest(struct EjFuseState *ejs, struct EjContestState *ecs)
 
     struct EjContestSession *ecc = calloc(1, sizeof(*ecc));
     ecc->cnts_id = ecs->cnts_id;
-    ejudge_client_enter_contest_request(ejs, ecs, &esv, ecc);
+    ejudge_client_enter_contest_request(ejs, ecs, &esv, current_time_us, ecc);
     contest_session_set(ecs, ecc);
 }
 
 void
-contest_session_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs)
+contest_session_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        long long current_time_us)
 {
     int update_needed = 0;
     struct EjContestSession *ecc = contest_session_read_lock(ecs);
     if (ecc->ok) {
-        if (ecc->expire_us > 0 && ejs->current_time_us >= ecc->expire_us - 10000000) {
+        if (ecc->expire_us > 0 && current_time_us >= ecc->expire_us - 10000000) {
             update_needed = 1;
         }
-        if (ecc->recheck_time_us > 0 && ejs->current_time_us >= ecc->recheck_time_us) {
+        if (ecc->recheck_time_us > 0 && current_time_us >= ecc->recheck_time_us) {
             update_needed = 1;
         }
     } else {
         update_needed = 1;
-        if (ecc->recheck_time_us > 0 && ejs->current_time_us < ecc->recheck_time_us) {
+        if (ecc->recheck_time_us > 0 && current_time_us < ecc->recheck_time_us) {
             update_needed = 0;
         }
     }
     contest_session_read_unlock(ecc);
     if (!update_needed) return;
 
-    top_session_maybe_update(ejs);
-    ejudge_client_enter_contest(ejs, ecs);
+    top_session_maybe_update(ejs, current_time_us);
+    ejudge_client_enter_contest(ejs, ecs, current_time_us);
 }
 
 void
-ejudge_client_contest_info(struct EjFuseState *ejs, struct EjContestState *ecs)
+ejudge_client_contest_info(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        long long current_time_us)
 {
     int already = contest_info_try_write_lock(ecs);
     if (already) return;
@@ -557,44 +566,51 @@ ejudge_client_contest_info(struct EjFuseState *ejs, struct EjContestState *ecs)
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     struct EjContestInfo *eci = contest_info_create(ecs->cnts_id);
-    ejudge_client_contest_info_request(ejs, ecs, &esv, eci);
+    ejudge_client_contest_info_request(ejs, ecs, &esv, current_time_us, eci);
     contest_info_set(ecs, eci);
 }
 
 void
-contest_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs)
+contest_info_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        long long current_time_us)
 {
     // contest session must be updated before
     int update_needed = 0;
     struct EjContestInfo *eci = contest_info_read_lock(ecs);
     if (eci->ok) {
-        if (eci->recheck_time_us > 0 && ejs->current_time_us >= eci->recheck_time_us) {
+        if (eci->recheck_time_us > 0 && current_time_us >= eci->recheck_time_us) {
             update_needed = 1;
         }
     } else {
         update_needed = 1;
-        if (eci->recheck_time_us > 0 && ejs->current_time_us < eci->recheck_time_us){
+        if (eci->recheck_time_us > 0 && current_time_us < eci->recheck_time_us){
             update_needed = 0;
         }
     }
     contest_info_read_unlock(eci);
     if (!update_needed) return;
 
-    ejudge_client_contest_info(ejs, ecs);
+    ejudge_client_contest_info(ejs, ecs, current_time_us);
 }
 
 void
-problem_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, struct EjProblemState *eps)
+problem_info_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        struct EjProblemState *eps,
+        long long current_time_us)
 {
     int update_needed = 0;
     struct EjProblemInfo *epi = problem_info_read_lock(eps);
     if (epi && epi->ok) {
-        if (epi->recheck_time_us > 0 && ejs->current_time_us >= epi->recheck_time_us) {
+        if (epi->recheck_time_us > 0 && current_time_us >= epi->recheck_time_us) {
             update_needed = 1;
         }
     } else {
         update_needed = 1;
-        if (epi && epi->recheck_time_us > 0 && ejs->current_time_us < epi->recheck_time_us) {
+        if (epi && epi->recheck_time_us > 0 && current_time_us < epi->recheck_time_us) {
             update_needed = 0;
         }
     }
@@ -608,12 +624,16 @@ problem_info_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, s
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     epi = problem_info_create(eps->prob_id);
-    ejudge_client_problem_info_request(ejs, ecs, &esv, eps->prob_id, epi);
+    ejudge_client_problem_info_request(ejs, ecs, &esv, eps->prob_id, current_time_us, epi);
     problem_info_set(eps, epi);
 }
 
 void
-problem_statement_maybe_update(struct EjFuseState *ejs, struct EjContestState *ecs, struct EjProblemState *eps)
+problem_statement_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        struct EjProblemState *eps,
+        long long current_time_us)
 {
     struct EjProblemInfo *epi = problem_info_read_lock(eps);
     if (!epi || !epi->ok || !epi->is_viewable || !epi->is_statement_avaiable) {
@@ -625,12 +645,12 @@ problem_statement_maybe_update(struct EjFuseState *ejs, struct EjContestState *e
     int update_needed = 0;
     struct EjProblemStatement *eph = problem_statement_read_lock(eps);
     if (eph && eph->ok) {
-        if (eph->recheck_time_us > 0 && ejs->current_time_us >= eph->recheck_time_us) {
+        if (eph->recheck_time_us > 0 && current_time_us >= eph->recheck_time_us) {
             update_needed = 1;
         }
     } else {
         update_needed = 1;
-        if (eph && eph->recheck_time_us > 0 && ejs->current_time_us < eph->recheck_time_us) {
+        if (eph && eph->recheck_time_us > 0 && current_time_us < eph->recheck_time_us) {
             update_needed = 0;
         }
     }
@@ -644,7 +664,7 @@ problem_statement_maybe_update(struct EjFuseState *ejs, struct EjContestState *e
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     eph = problem_statement_create(eps->prob_id);
-    ejudge_client_problem_statement_request(ejs, ecs, &esv, eps->prob_id, eph);
+    ejudge_client_problem_statement_request(ejs, ecs, &esv, eps->prob_id, current_time_us, eph);
     problem_statement_set(eps, eph);
 }
 
@@ -780,7 +800,7 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
     memset(efr, 0, sizeof(*efr));
     efr->fx = fuse_get_context();
     efr->ejs = (struct EjFuseState *) efr->fx->private_data;
-    update_current_time(efr->ejs);
+    efr->current_time_us = get_current_time();
     // safety
     if (!path || path[0] != '/') {
         return -ENOENT;
@@ -828,8 +848,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
     if (!p2) {
         if (!strcmp(p1 + 1, "INFO") || !strcmp(p1 + 1, "info.json")) {
             efr->file_name = p1 + 1;
-            contest_session_maybe_update(efr->ejs, efr->ecs);
-            contest_info_maybe_update(efr->ejs, efr->ecs);
+            contest_session_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
+            contest_info_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
             efr->ops = &ejfuse_contest_info_operations;
             return 0;
         }
@@ -838,15 +858,15 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
             return 0;
         }
         if (!strcmp(p1 + 1, "problems")) {
-            contest_session_maybe_update(efr->ejs, efr->ecs);
-            contest_info_maybe_update(efr->ejs, efr->ecs);
+            contest_session_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
+            contest_info_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
             efr->ops = &ejfuse_contest_problems_operations;
             return 0;
         }
         return -ENOENT;
     }
-    contest_session_maybe_update(efr->ejs, efr->ecs);
-    contest_info_maybe_update(efr->ejs, efr->ecs);
+    contest_session_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
+    contest_info_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
     // next component: [p1 + 1, p2)
     // check for problems
     if (p2 - p1 - 1 != 8 || memcmp(p1 + 1, "problems", 8)) {
@@ -891,7 +911,7 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
         if (find_problem(efr, prob_name_buf) < 0) {
             return -ENOENT;
         }
-        problem_info_maybe_update(efr->ejs, efr->ecs, efr->eps);
+        problem_info_maybe_update(efr->ejs, efr->ecs, efr->eps, efr->current_time_us);
     }
     const char *p4 = strchr(p3 + 1, '/');
     if (!p4) {
@@ -994,15 +1014,15 @@ int main(int argc, char *argv[])
 
     submit_thread_start(ejs->submit_thread, ejs);
 
-    update_current_time(ejs);
-    ejs->start_time_us = ejs->current_time_us;
+    long long current_time_us = get_current_time();
+    ejs->start_time_us = current_time_us;
 
-    ej_get_top_level_session(ejs);
+    ej_get_top_level_session(ejs, current_time_us);
     if (!ejs->top_session->ok) {
         fprintf(stderr, "initial login failed: %s\n", ejs->top_session->log_s);
         return 1;
     }
-    ej_get_contest_list(ejs);
+    ej_get_contest_list(ejs, current_time_us);
     if (!ejs->contests->ok) {
         fprintf(stderr, "initial contest list failed: %s\n", ejs->top_session->log_s);
         return 1;

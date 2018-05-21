@@ -32,6 +32,7 @@ void
 ejudge_client_get_contest_list_request(
         struct EjFuseState *ejs,
         const struct EjSessionValue *esv,
+        long long current_time_us, 
         struct EjContestList *contests); // output
 
 void
@@ -39,6 +40,7 @@ ejudge_client_enter_contest_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
+        long long current_time_us,
         struct EjContestSession *ecc); // output
 
 void
@@ -46,6 +48,7 @@ ejudge_client_contest_info_request(
         struct EjFuseState *ejs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
+        long long current_time_us,
         struct EjContestInfo *eci); // output
 
 void
@@ -54,6 +57,7 @@ ejudge_client_problem_info_request(
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
+        long long current_time_us,
         struct EjProblemInfo *epi); // output
 
 void
@@ -62,4 +66,5 @@ ejudge_client_problem_statement_request(
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
+        long long current_time_us,
         struct EjProblemStatement *eph); // output
