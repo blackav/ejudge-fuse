@@ -41,6 +41,7 @@ file_node_free(struct EjFileNode *efn)
 {
     if (efn) {
         pthread_rwlock_destroy(&efn->rwl);
+        free(efn->data);
         free(efn);
     }
 }
