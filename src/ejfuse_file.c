@@ -33,7 +33,7 @@ file_node_create(int fnode)
 {
     struct EjFileNode *efn = calloc(1, sizeof(*efn));
     efn->fnode = fnode;
-    pthread_rwlock_init(&efn->rwl, NULL);
+    pthread_mutex_init(&efn->m, NULL);
     return efn;
 }
 
@@ -41,7 +41,7 @@ void
 file_node_free(struct EjFileNode *efn)
 {
     if (efn) {
-        pthread_rwlock_destroy(&efn->rwl);
+        pthread_mutex_destroy(&efn->m);
         free(efn->data);
         free(efn);
     }

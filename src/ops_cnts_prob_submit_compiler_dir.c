@@ -97,7 +97,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     struct EjFileNode *efn = file_nodes_get_node(ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_rdlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
 
     memset(stb, 0, sizeof(*stb));
     snprintf(fullpath, sizeof(fullpath), "/fnode/%d", dn.fnode);
@@ -113,7 +113,8 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     stb->st_mtim.tv_nsec = (efn->mtime_us % 1000000) * 1000;
     stb->st_ctim.tv_sec = efn->ctime_us / 1000000;
     stb->st_ctim.tv_nsec = (efn->ctime_us % 1000000) * 1000;
-    pthread_rwlock_unlock(&efn->rwl);
+
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return 0;
 }
@@ -126,7 +127,8 @@ ejf_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *stb, stru
 
     struct EjFileNode *efn = file_nodes_get_node(ejs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
-    pthread_rwlock_rdlock(&efn->rwl);
+
+    pthread_mutex_lock(&efn->m);
 
     memset(stb, 0, sizeof(*stb));
     snprintf(fullpath, sizeof(fullpath), "/fnode/%d", (int) ffi->fh);
@@ -142,7 +144,8 @@ ejf_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *stb, stru
     stb->st_mtim.tv_nsec = (efn->mtime_us % 1000000) * 1000;
     stb->st_ctim.tv_sec = efn->ctime_us / 1000000;
     stb->st_ctim.tv_nsec = (efn->ctime_us % 1000000) * 1000;
-    pthread_rwlock_unlock(&efn->rwl);
+
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return 0;
 }
@@ -169,13 +172,6 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 1, mode, efr->ejs->current_time_us, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
-    if (!efn) return -ENOENT;
-
-    pthread_rwlock_wrlock(&efn->rwl);
-
-    pthread_rwlock_unlock(&efn->rwl);
-    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return 0;
 }
 
@@ -198,9 +194,11 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
+
     int perms = efn->mode;
-    pthread_rwlock_unlock(&efn->rwl);
+
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
 
     return check_perms(efr, perms, mode);
@@ -237,10 +235,10 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);  // because of atime
+    pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, req_bits)) < 0) {
-        pthread_rwlock_unlock(&efn->rwl);
+        pthread_mutex_unlock(&efn->m);
         atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
         return res;
     }
@@ -254,7 +252,8 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
     efn->atime_us = efr->ejs->current_time_us;
     atomic_fetch_add_explicit(&efn->opencnt, 1, memory_order_relaxed);
     ffi->fh = dn.fnode;
-    pthread_rwlock_unlock(&efn->rwl);
+
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
 
     return 0;
@@ -297,10 +296,10 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, req_bits)) < 0) {
-        pthread_rwlock_unlock(&efn->rwl);
+        pthread_mutex_unlock(&efn->m);
         atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
         return res;
     }
@@ -314,7 +313,8 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
     efn->atime_us = efr->ejs->current_time_us;
     atomic_fetch_add_explicit(&efn->opencnt, 1, memory_order_relaxed);
     ffi->fh = dn.fnode;
-    pthread_rwlock_unlock(&efn->rwl);
+
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
 
     return 0;
@@ -345,7 +345,7 @@ ejf_truncate(struct EjFuseRequest *efr, const char *path, off_t offset)
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
     if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
@@ -354,7 +354,7 @@ ejf_truncate(struct EjFuseRequest *efr, const char *path, off_t offset)
     res = 0;
 
 out:
-    pthread_rwlock_unlock(&efn->rwl);
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
 }
@@ -368,7 +368,7 @@ ejf_ftruncate(struct EjFuseRequest *efr, const char *path, off_t offset, struct 
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
     if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
@@ -377,7 +377,7 @@ ejf_ftruncate(struct EjFuseRequest *efr, const char *path, off_t offset, struct 
     res = 0;
 
 out:
-    pthread_rwlock_unlock(&efn->rwl);
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
 }
@@ -433,7 +433,7 @@ ejf_read(
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl); // for atime
+    pthread_mutex_lock(&efn->m);
 
     res = 0;
     if (ioff >= efn->size) goto out;
@@ -444,7 +444,7 @@ ejf_read(
 
 out:
     efn->atime_us = efr->ejs->current_time_us;
-    pthread_rwlock_unlock(&efn->rwl);
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
 }
@@ -475,7 +475,7 @@ ejf_write(
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
 
     int new_size;
     if (__builtin_add_overflow(ioff, isize, &new_size)) {
@@ -492,7 +492,7 @@ ejf_write(
 
 out:
     efn->mtime_us = efr->ejs->current_time_us;
-    pthread_rwlock_unlock(&efn->rwl);
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
 }
@@ -506,9 +506,12 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_rdlock(&efn->rwl);
-    // send the submit!
-    pthread_rwlock_unlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
+
+    // FIXME: send the submit!
+
+    pthread_mutex_unlock(&efn->m);
+
     atomic_fetch_sub_explicit(&efn->opencnt, 1, memory_order_relaxed);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return 0;
@@ -543,7 +546,7 @@ ejf_utimens(struct EjFuseRequest *efr, const char *path, const struct timespec t
     struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
-    pthread_rwlock_wrlock(&efn->rwl);
+    pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
 
@@ -552,7 +555,7 @@ ejf_utimens(struct EjFuseRequest *efr, const char *path, const struct timespec t
     res = 0;
 
 out:
-    pthread_rwlock_unlock(&efn->rwl);
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
     return res;
 }

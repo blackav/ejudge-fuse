@@ -29,7 +29,8 @@ struct EjFileNode
     int fnode;   // serial number, a component to "/fnone/<NUM>" path to generate an inode
     struct EjFileNode *reclaim_next; // the list of nodes for reclaim
 
-    pthread_rwlock_t rwl;
+    pthread_mutex_t m;
+    //pthread_rwlock_t rwl;
     _Atomic int refcnt;   // reference counter for pointers outside of EjFileNodes
     _Atomic int opencnt;  // open file counter
     _Atomic int nlink;    // refcounter
