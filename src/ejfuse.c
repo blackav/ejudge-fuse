@@ -717,6 +717,8 @@ find_compiler(struct EjFuseRequest *efr, const unsigned char *name_or_id)
 static int
 ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
 {
+    file_nodes_list(efr->ejs->file_nodes);
+
     unsigned char lang_buf[NAME_MAX + 1];
     if (path[0] != '/') return -ENOENT;
     const char *p1 = strchr(path + 1, '/');

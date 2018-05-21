@@ -25,6 +25,7 @@
 #include <stdatomic.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <stdio.h>
 
 struct EjFileNode *
 file_node_create(int fnode)
@@ -374,4 +375,16 @@ file_node_truncate_unlocked(struct EjFileNode *efn, off_t offset)
 
     efn->size = ioff;
     return 0;
+}
+
+void
+file_nodes_list(struct EjFileNodes *efns)
+{
+    if (!efns) return;
+    pthread_rwlock_rdlock(&efns->rwl);
+    for (int i = 0; i < efns->size; ++i) {
+        struct EjFileNode *efn = efns->nodes[i];
+        fprintf(stderr, "[%d]: %d, %d, %d, %d, %d\n", i, efn->fnode, efn->refcnt, efn->opencnt, efn->nlink, efn->size);
+    }
+    pthread_rwlock_unlock(&efns->rwl);
 }
