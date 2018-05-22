@@ -563,6 +563,35 @@ out:
     return res;
 }
 
+static int
+ejf_chmod(struct EjFuseRequest *efr, const char *path, mode_t mode)
+{
+    size_t name_len = strlen(efr->file_name);
+    if (name_len > NAME_MAX) return -ENAMETOOLONG;
+
+    if (efr->ejs->owner_uid != efr->fx->uid) return -EPERM;
+
+    int res = check_lang(efr);
+    if (res < 0) return res;
+
+    struct EjProblemCompilerSubmits *epcs = problem_submits_get(efr->eps->submits, efr->lang_id);
+    if (!epcs) return -ENOENT;
+
+    struct EjDirectoryNode dn;
+    res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
+    if (res < 0) return res;
+
+    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    if (!efn) return -ENOENT;
+
+    pthread_mutex_lock(&efn->m);
+    efn->mode = mode & 07777;
+    pthread_mutex_unlock(&efn->m);
+    atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed);
+
+    return 0;
+}
+
 const struct EjFuseOperations ejfuse_contest_problem_submit_compiler_dir_operations =
 {
     ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
@@ -574,7 +603,7 @@ const struct EjFuseOperations ejfuse_contest_problem_submit_compiler_dir_operati
     ejf_generic_symlink, //int (*symlink)(struct EjFuseRequest *, const char *, const char *);
     ejf_generic_rename, //int (*rename)(struct EjFuseRequest *, const char *, const char *);
     ejf_generic_link, //int (*link)(struct EjFuseRequest *, const char *, const char *);
-    ejf_generic_chmod, //int (*chmod)(struct EjFuseRequest *, const char *, mode_t);
+    ejf_chmod, //int (*chmod)(struct EjFuseRequest *, const char *, mode_t);
     ejf_generic_chown, //int (*chown)(struct EjFuseRequest *, const char *, uid_t, gid_t);
     ejf_truncate, //int (*truncate)(struct EjFuseRequest *, const char *, off_t);
     ejf_open, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
