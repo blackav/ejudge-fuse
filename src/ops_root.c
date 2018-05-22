@@ -29,26 +29,26 @@
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
 
     memset(stb, 0, sizeof(*stb));
-    stb->st_ino = get_inode(ejs, "/");
+    stb->st_ino = get_inode(efs, "/");
     //stb->st_ino = 2;
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjContestList *contests = contest_list_read_lock(efs);
     stb->st_nlink += contests->count;
     contest_list_read_unlock(contests);
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = 4096; // ???, but why not?
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
-    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
     return 0;
 }
 
@@ -57,9 +57,9 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
     int perms = EJFUSE_DIR_PERMS;
     mode &= 07;
-    if (efr->ejs->owner_uid == efr->fx->uid) {
+    if (efr->efs->owner_uid == efr->fx->uid) {
         perms >>= 6;
-    } else if (efr->ejs->owner_gid == efr->fx->gid) {
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
         perms >>= 3;
     } else {
         // nothing
@@ -71,75 +71,15 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     }
 }
 
-#if 0
-struct fuse_file_info {
-	/** Open flags.	 Available in open() and release() */
-	int flags;
-
-	/** Old file handle, don't use */
-	unsigned long fh_old;
-
-	/** In case of a write operation indicates if this was caused by a
-	    writepage */
-	int writepage;
-
-	/** Can be filled in by open, to use direct I/O on this file.
-	    Introduced in version 2.4 */
-	unsigned int direct_io : 1;
-
-	/** Can be filled in by open, to indicate, that cached file data
-	    need not be invalidated.  Introduced in version 2.4 */
-	unsigned int keep_cache : 1;
-
-	/** Indicates a flush operation.  Set in flush operation, also
-	    maybe set in highlevel lock operation and lowlevel release
-	    operation.	Introduced in version 2.6 */
-	unsigned int flush : 1;
-
-	/** Can be filled in by open, to indicate that the file is not
-	    seekable.  Introduced in version 2.8 */
-	unsigned int nonseekable : 1;
-
-	/* Indicates that flock locks for this file should be
-	   released.  If set, lock_owner shall contain a valid value.
-	   May only be set in ->release().  Introduced in version
-	   2.9 */
-	unsigned int flock_release : 1;
-
-	/** Padding.  Do not use*/
-	unsigned int padding : 27;
-
-	/** File handle.  May be filled in by filesystem in open().
-	    Available in all other file operations */
-	uint64_t fh;
-
-	/** Lock owner id.  Available in locking operations and flush */
-	uint64_t lock_owner;
-};
-#endif
-
 static int
 ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
-    if (efr->ejs->owner_uid != efr->fx->uid) {
+    if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     // no op, actual work is done by readdir
     return 0;
 }
-
-#if 0
-/** Function to add an entry in a readdir() operation
- *
- * @param buf the buffer passed to the readdir() operation
- * @param name the file name of the directory entry
- * @param stat file attributes, can be NULL
- * @param off offset of the next entry or zero
- * @return 1 if buffer is full, zero otherwise
- */
-typedef int (*fuse_fill_dir_t) (void *buf, const char *name,
-				const struct stat *stbuf, off_t off);
-#endif
 
 static int
 ejf_readdir(
@@ -150,20 +90,20 @@ ejf_readdir(
         off_t offset,
         struct fuse_file_info *ffi)
 {
-    struct EjFuseState *ejs = efr->ejs;
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjFuseState *efs = efr->efs;
+    struct EjContestList *contests = contest_list_read_lock(efs);
     unsigned char name_buf[NAME_MAX + 1];
     unsigned char name_path[PATH_MAX];
     struct stat es;
     // add "."
     memset(&es, 0, sizeof(es));
-    es.st_ino = get_inode(ejs, "/");
+    es.st_ino = get_inode(efs, "/");
     filler(buf, ".", &es, 0);
     filler(buf, "..", &es, 0);
     for (int i = 0; i < contests->count; ++i) {
         memset(&es, 0, sizeof(es));
         snprintf(name_path, sizeof(name_path), "/%d", contests->entries[i].id);
-        es.st_ino = get_inode(ejs, name_path);
+        es.st_ino = get_inode(efs, name_path);
         snprintf(name_buf, sizeof(name_buf), "%d,%s", contests->entries[i].id, contests->entries[i].name);
         // FIXME: truncate UTF-8 correctly
         filler(buf, name_buf, &es, 0);

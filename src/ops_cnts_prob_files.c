@@ -30,7 +30,7 @@
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     off_t file_size = 0;
 
     if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO) || !strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
@@ -70,19 +70,19 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     memset(stb, 0, sizeof(*stb));
 
     snprintf(fullpath, sizeof(fullpath), "/%d/problems", efr->ecs->cnts_id);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
     stb->st_nlink = 2;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = file_size;
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
-    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
 
     return 0;
 }
@@ -116,9 +116,9 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     } else {
         return -ENOENT;
     }
-    if (efr->ejs->owner_uid == efr->fx->uid) {
+    if (efr->efs->owner_uid == efr->fx->uid) {
         perms >>= 6;
-    } else if (efr->ejs->owner_gid == efr->fx->gid) {
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
         perms >>= 3;
     } else {
         // nothing
@@ -153,7 +153,7 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
             return -ENOENT;
         }
         problem_info_read_unlock(epi);
-        problem_statement_maybe_update(efr->ejs, efr->ecs, efr->eps, efr->current_time_us);
+        problem_statement_maybe_update(efr->efs, efr->ecs, efr->eps, efr->current_time_us);
         struct EjProblemStatement *eph = problem_statement_read_lock(efr->eps);
         if (!eph || !eph->ok) {
             problem_statement_read_unlock(eph);
@@ -163,7 +163,7 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
     } else {
         return -ENOENT;
     }
-    if (efr->ejs->owner_uid != efr->fx->uid) {
+    if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     if ((ffi->flags & O_ACCMODE) != O_RDONLY) {
@@ -201,7 +201,7 @@ ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, of
             return -EIO;
         }
         problem_info_read_unlock(epi);
-        problem_statement_maybe_update(efr->ejs, efr->ecs, efr->eps, efr->current_time_us);
+        problem_statement_maybe_update(efr->efs, efr->ecs, efr->eps, efr->current_time_us);
         struct EjProblemStatement *eph = problem_statement_read_lock(efr->eps);
         if (!eph || !eph->ok) {
             problem_statement_read_unlock(eph);

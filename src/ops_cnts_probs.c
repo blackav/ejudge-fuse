@@ -30,7 +30,7 @@
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     int retval = -ENOENT;
     unsigned char fullpath[PATH_MAX];
 
@@ -44,19 +44,19 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     memset(stb, 0, sizeof(*stb));
 
     snprintf(fullpath, sizeof(fullpath), "/%d/problems", efr->ecs->cnts_id);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = 4096; // ???, but why not?
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
-    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
 
     retval = 0;
 
@@ -67,7 +67,7 @@ done:
 static int
 ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     int retval = -ENOENT;
     int perms = EJFUSE_DIR_PERMS;
     mode &= 07;
@@ -79,9 +79,9 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     }
     contest_info_read_unlock(eci);
 
-    if (ejs->owner_uid == efr->fx->uid) {
+    if (efs->owner_uid == efr->fx->uid) {
         perms >>= 6;
-    } else if (ejs->owner_gid == efr->fx->gid) {
+    } else if (efs->owner_gid == efr->fx->gid) {
         perms >>= 3;
     } else {
         // nothing
@@ -105,7 +105,7 @@ ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
         return -ENOENT;
     }
     contest_info_read_unlock(eci);
-    if (efr->ejs->owner_uid != efr->fx->uid) {
+    if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     // no op, actual work is done by readdir
@@ -127,7 +127,7 @@ ejf_readdir(
         off_t offset,
         struct fuse_file_info *ffi)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
     if (!eci || !eci->ok) {
         contest_info_read_unlock(eci);
@@ -138,11 +138,11 @@ ejf_readdir(
     snprintf(cp_path, sizeof(cp_path), "/%d/problems", efr->contest_id);
     struct stat es;
     memset(&es, 0, sizeof(es));
-    es.st_ino = get_inode(ejs, cp_path);
+    es.st_ino = get_inode(efs, cp_path);
     filler(buf, ".", &es, 0);
     unsigned char p_path[PATH_MAX];
     snprintf(p_path, sizeof(p_path), "/%d", efr->contest_id);
-    es.st_ino = get_inode(ejs, p_path);
+    es.st_ino = get_inode(efs, p_path);
     filler(buf, "..", &es, 0);
 
     for (int prob_id = 1; prob_id < eci->prob_size; ++prob_id) {
@@ -159,7 +159,7 @@ ejf_readdir(
             } else {
                 snprintf(dpath, sizeof(dpath), "%d", prob_id);
             }
-            es.st_ino = get_inode(ejs, ipath);
+            es.st_ino = get_inode(efs, ipath);
             filler(buf, dpath, &es, 0);
         }
     }

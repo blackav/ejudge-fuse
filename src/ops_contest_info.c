@@ -30,7 +30,7 @@
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     struct EjContestState *ecs = efr->ecs;
     int retval = -ENOENT;
     unsigned char fullpath[PATH_MAX];
@@ -46,20 +46,20 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 
     memset(stb, 0, sizeof(*stb));
     snprintf(fullpath, sizeof(fullpath), "/%d/%s", efr->contest_id, efr->file_name);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
     stb->st_size = size;
     stb->st_nlink = 1;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
 
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
-    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
 
     retval = 0;
 done:
@@ -81,9 +81,9 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     }
     contest_info_read_unlock(eci);
 
-    if (efr->ejs->owner_uid == efr->fx->uid) {
+    if (efr->efs->owner_uid == efr->fx->uid) {
         perms >>= 6;
-    } else if (efr->ejs->owner_gid == efr->fx->gid) {
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
         perms >>= 3;
     } else {
         // nothing
@@ -108,7 +108,7 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
     }
     contest_info_read_unlock(eci);
 
-    if (efr->ejs->owner_uid != efr->fx->uid) {
+    if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     if ((ffi->flags & O_ACCMODE) != O_RDONLY) {

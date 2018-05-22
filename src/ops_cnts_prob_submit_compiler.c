@@ -31,7 +31,7 @@
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     unsigned char fullpath[PATH_MAX];
     struct EjProblemInfo *epi = NULL;
 
@@ -54,21 +54,21 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 
     memset(stb, 0, sizeof(*stb));
     snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     // non-standard permissions: -wx------
     //stb->st_mode = S_IFDIR | 0300;
     stb->st_mode = S_IFDIR | 0700; // debug
     stb->st_nlink = 2;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = 4096; // ???, but why not?
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
-    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
 
     problem_info_read_unlock(epi);
     return 0;
@@ -77,7 +77,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 static int
 ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     int retval = -ENOENT;
     //int perms = 0300;
     int perms = 0700; // debug
@@ -100,9 +100,9 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     }
     problem_info_read_unlock(epi);
 
-    if (ejs->owner_uid == efr->fx->uid) {
+    if (efs->owner_uid == efr->fx->uid) {
         perms >>= 6;
-    } else if (ejs->owner_gid == efr->fx->gid) {
+    } else if (efs->owner_gid == efr->fx->gid) {
         perms >>= 3;
     } else {
         // nothing
@@ -136,7 +136,7 @@ ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     }
     problem_info_read_unlock(epi);
 
-    if (efr->ejs->owner_uid != efr->fx->uid) {
+    if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     return 0;
@@ -151,7 +151,7 @@ ejf_readdir(
         off_t offset,
         struct fuse_file_info *ffi)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
     if (!epi || !epi->ok || !epi->is_submittable) {
         problem_info_read_unlock(epi);
@@ -173,12 +173,12 @@ ejf_readdir(
     snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
     struct stat es;
     memset(&es, 0, sizeof(es));
-    es.st_ino = get_inode(ejs, dot_path);
+    es.st_ino = get_inode(efs, dot_path);
     filler(buf, ".", &es, 0);
 
     unsigned char ddot_path[PATH_MAX];
     snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
-    es.st_ino = get_inode(ejs, ddot_path);
+    es.st_ino = get_inode(efs, ddot_path);
     filler(buf, "..", &es, 0);
 
     struct EjProblemCompilerSubmits *epcs = problem_submits_get(efr->eps->submits, efr->lang_id);
@@ -189,7 +189,7 @@ ejf_readdir(
         unsigned char path[PATH_MAX];
         dir_nodes_read(epcs->dir_nodes, i, &dn);
         snprintf(path, sizeof(path), "/fnode/%d", dn.fnode);
-        es.st_ino = get_inode(ejs, path);
+        es.st_ino = get_inode(efs, path);
         filler(buf, dn.name, &es, 0);
     }
     dir_nodes_unlock(epcs->dir_nodes);

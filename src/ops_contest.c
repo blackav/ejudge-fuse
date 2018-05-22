@@ -30,30 +30,30 @@
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     int retval = -ENOENT;
     unsigned char fullpath[PATH_MAX];
 
     memset(stb, 0, sizeof(*stb));
 
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjContestList *contests = contest_list_read_lock(efs);
     struct EjContestListItem *fcntx = contest_list_find(contests, efr->contest_id);
     if (!fcntx) goto done;
 
     snprintf(fullpath, sizeof(fullpath), "/%d", fcntx->id);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = 4096; // ???, but why not?
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
-    stb->st_ctim.tv_sec = ejs->start_time_us / 1000000;
-    stb->st_ctim.tv_nsec = (ejs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
 
     retval = 0;
 
@@ -65,18 +65,18 @@ done:
 static int
 ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     int retval = -ENOENT;
     int perms = EJFUSE_DIR_PERMS;
     mode &= 07;
 
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjContestList *contests = contest_list_read_lock(efs);
     struct EjContestListItem *fcntx = contest_list_find(contests, efr->contest_id);
     if (!fcntx) goto done;
 
-    if (efr->ejs->owner_uid == efr->fx->uid) {
+    if (efr->efs->owner_uid == efr->fx->uid) {
         perms >>= 6;
-    } else if (efr->ejs->owner_gid == efr->fx->gid) {
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
         perms >>= 3;
     } else {
         // nothing
@@ -95,15 +95,15 @@ done:
 static int
 ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
-    struct EjFuseState *ejs = efr->ejs;
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjFuseState *efs = efr->efs;
+    struct EjContestList *contests = contest_list_read_lock(efs);
     struct EjContestListItem *fcntx = contest_list_find(contests, efr->contest_id);
     contest_list_read_unlock(contests);
 
     if (!fcntx) {
         return -ENOENT;
     }
-    if (efr->ejs->owner_uid != efr->fx->uid) {
+    if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     // no op, actual work is done by readdir
@@ -125,8 +125,8 @@ ejf_readdir(
         off_t offset,
         struct fuse_file_info *ffi)
 {
-    struct EjFuseState *ejs = efr->ejs;
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjFuseState *efs = efr->efs;
+    struct EjContestList *contests = contest_list_read_lock(efs);
     struct EjContestListItem *fcntx = contest_list_find(contests, efr->contest_id);
     contest_list_read_unlock(contests);
     if (!fcntx) {
@@ -137,23 +137,23 @@ ejf_readdir(
     snprintf(contest_path, sizeof(contest_path), "/%d", efr->contest_id);
     struct stat es;
     memset(&es, 0, sizeof(es));
-    es.st_ino = get_inode(ejs, contest_path);
+    es.st_ino = get_inode(efs, contest_path);
     filler(buf, ".", &es, 0);
-    es.st_ino = get_inode(ejs, "/");
+    es.st_ino = get_inode(efs, "/");
     filler(buf, "..", &es, 0);
 
     unsigned char entry_path[PATH_MAX];
     snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "INFO");
-    es.st_ino = get_inode(ejs, entry_path);
+    es.st_ino = get_inode(efs, entry_path);
     filler(buf, "INFO", &es, 0);
     snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "info.json");
-    es.st_ino = get_inode(ejs, entry_path);
+    es.st_ino = get_inode(efs, entry_path);
     filler(buf, "info.json", &es, 0);
     snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "LOG");
-    es.st_ino = get_inode(ejs, entry_path);
+    es.st_ino = get_inode(efs, entry_path);
     filler(buf, "LOG", &es, 0);
     snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "problems");
-    es.st_ino = get_inode(ejs, entry_path);
+    es.st_ino = get_inode(efs, entry_path);
     filler(buf, "problems", &es, 0);
 
     return 0;

@@ -98,7 +98,7 @@ struct EjFuseRequest
     long long current_time_us;
 
     const struct EjFuseOperations *ops;
-    struct EjFuseState *ejs;
+    struct EjFuseState *efs;
     struct fuse_context *fx;
 
     int contest_id;

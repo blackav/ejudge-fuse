@@ -36,9 +36,9 @@ check_perms(struct EjFuseRequest *efr, int file_perms, int req_perms)
     int retval = -EACCES;
     req_perms &= 7;
 
-    if (efr->ejs->owner_uid == efr->fx->uid) {
+    if (efr->efs->owner_uid == efr->fx->uid) {
         file_perms >>= 6;
-    } else if (efr->ejs->owner_gid == efr->fx->gid) {
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
         file_perms >>= 3;
     } else {
         // nothing
@@ -75,13 +75,13 @@ check_lang(struct EjFuseRequest *efr)
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     unsigned char fullpath[PATH_MAX];
     size_t name_len = strlen(efr->file_name);
 
     if (name_len > NAME_MAX) return -ENAMETOOLONG;
 
-    if (efr->ejs->owner_uid != efr->fx->uid) return -EPERM;
+    if (efr->efs->owner_uid != efr->fx->uid) return -EPERM;
 
     int res = check_lang(efr);
     if (res < 0) return res;
@@ -95,18 +95,18 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
 
     memset(stb, 0, sizeof(*stb));
     snprintf(fullpath, sizeof(fullpath), "/fnode/%d", dn.fnode);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | (efn->mode & 07777);
     stb->st_nlink = efn->nlink;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = efn->size;
     stb->st_atim.tv_sec = efn->atime_us / 1000000;
     stb->st_atim.tv_nsec = (efn->atime_us % 1000000) * 1000;
@@ -123,21 +123,21 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 static int
 ejf_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *stb, struct fuse_file_info *ffi)
 {
-    struct EjFuseState *ejs = efr->ejs;
+    struct EjFuseState *efs = efr->efs;
     unsigned char fullpath[PATH_MAX];
 
-    struct EjFileNode *efn = file_nodes_get_node(ejs->file_nodes, ffi->fh);
+    struct EjFileNode *efn = file_nodes_get_node(efs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
 
     memset(stb, 0, sizeof(*stb));
     snprintf(fullpath, sizeof(fullpath), "/fnode/%d", (int) ffi->fh);
-    stb->st_ino = get_inode(ejs, fullpath);
+    stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | (efn->mode & 07777);
     stb->st_nlink = efn->nlink;
-    stb->st_uid = ejs->owner_uid;
-    stb->st_gid = ejs->owner_gid;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
     stb->st_size = efn->size;
     stb->st_atim.tv_sec = efn->atime_us / 1000000;
     stb->st_atim.tv_nsec = (efn->atime_us % 1000000) * 1000;
@@ -161,7 +161,7 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     size_t name_len = strlen(efr->file_name);
     if (name_len > NAME_MAX) return -ENAMETOOLONG;
 
-    if (efr->ejs->owner_uid != efr->fx->uid) return -EPERM;
+    if (efr->efs->owner_uid != efr->fx->uid) return -EPERM;
 
     int res = check_lang(efr);
     if (res < 0) return res;
@@ -170,7 +170,7 @@ ejf_mknod(struct EjFuseRequest *efr, const char *path, mode_t mode, dev_t dev)
     if (!epcs) return -ENOENT;
 
     struct EjDirectoryNode dn;
-    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 1, mode, efr->current_time_us, &dn);
+    res = dir_nodes_open_node(epcs->dir_nodes, efr->efs->file_nodes, efr->file_name, name_len, 1, 1, mode, efr->current_time_us, &dn);
     if (res < 0) return res;
 
     return 0;
@@ -192,7 +192,7 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
@@ -233,7 +233,7 @@ ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi
     res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
@@ -270,7 +270,7 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
     size_t name_len = strlen(efr->file_name);
     if (name_len > NAME_MAX) return -ENAMETOOLONG;
 
-    if (efr->ejs->owner_uid != efr->fx->uid) return -EPERM;
+    if (efr->efs->owner_uid != efr->fx->uid) return -EPERM;
 
     int open_mode = (ffi->flags & O_ACCMODE);
     int req_bits = 0;
@@ -291,10 +291,10 @@ ejf_create(struct EjFuseRequest *efr, const char *path, mode_t mode, struct fuse
     if (!epcs) return -ENOENT;
 
     struct EjDirectoryNode dn;
-    res = dir_nodes_open_node(epcs->dir_nodes, efr->ejs->file_nodes, efr->file_name, name_len, 1, 0, mode, efr->current_time_us, &dn);
+    res = dir_nodes_open_node(epcs->dir_nodes, efr->efs->file_nodes, efr->file_name, name_len, 1, 0, mode, efr->current_time_us, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
@@ -343,13 +343,13 @@ ejf_truncate(struct EjFuseRequest *efr, const char *path, off_t offset)
     res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
-    if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
+    if ((res = file_node_truncate_unlocked(efr->efs->file_nodes, efn, offset)) < 0) goto out;
 
     efn->mtime_us = efr->current_time_us;
     res = 0;
@@ -366,13 +366,13 @@ ejf_ftruncate(struct EjFuseRequest *efr, const char *path, off_t offset, struct 
     int res = check_lang(efr);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
 
     if ((res = check_perms(efr, efn->mode, 2)) < 0) goto out;
-    if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, offset)) < 0) goto out;
+    if ((res = file_node_truncate_unlocked(efr->efs->file_nodes, efn, offset)) < 0) goto out;
 
     efn->mtime_us = efr->current_time_us;
     res = 0;
@@ -399,11 +399,11 @@ ejf_unlink(struct EjFuseRequest *efr, const char *path)
     res = dir_nodes_unlink_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     atomic_fetch_sub_explicit(&efn->nlink, 1, memory_order_relaxed);
-    file_nodes_maybe_remove(efr->ejs->file_nodes, efn, efr->current_time_us);
+    file_nodes_maybe_remove(efr->efs->file_nodes, efn, efr->current_time_us);
 
     return 0;
 }
@@ -431,7 +431,7 @@ ejf_read(
     if (isize < 0) return -EINVAL;
     if (!isize) return 0;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
@@ -473,7 +473,7 @@ ejf_write(
     if (isize < 0) return -EINVAL;
     if (!isize) return 0;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
@@ -484,7 +484,7 @@ ejf_write(
         goto out;
     }
     if (new_size > efn->size) {
-        if ((res = file_node_truncate_unlocked(efr->ejs->file_nodes, efn, new_size)) < 0)
+        if ((res = file_node_truncate_unlocked(efr->efs->file_nodes, efn, new_size)) < 0)
             goto out;
     }
 
@@ -504,10 +504,10 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
     int res = check_lang(efr);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, ffi->fh);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, ffi->fh);
     if (!efn) return -ENOENT;
 
-    submit_thread_enqueue(efr->ejs->submit_thread,
+    submit_thread_enqueue(efr->efs->submit_thread,
                           submit_item_create(efr->current_time_us,
                                              efr->contest_id,
                                              efr->prob_id,
@@ -546,7 +546,7 @@ ejf_utimens(struct EjFuseRequest *efr, const char *path, const struct timespec t
     res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);
@@ -569,7 +569,7 @@ ejf_chmod(struct EjFuseRequest *efr, const char *path, mode_t mode)
     size_t name_len = strlen(efr->file_name);
     if (name_len > NAME_MAX) return -ENAMETOOLONG;
 
-    if (efr->ejs->owner_uid != efr->fx->uid) return -EPERM;
+    if (efr->efs->owner_uid != efr->fx->uid) return -EPERM;
 
     int res = check_lang(efr);
     if (res < 0) return res;
@@ -581,7 +581,7 @@ ejf_chmod(struct EjFuseRequest *efr, const char *path, mode_t mode)
     res = dir_nodes_get_node(epcs->dir_nodes, efr->file_name, name_len, &dn);
     if (res < 0) return res;
 
-    struct EjFileNode *efn = file_nodes_get_node(efr->ejs->file_nodes, dn.fnode);
+    struct EjFileNode *efn = file_nodes_get_node(efr->efs->file_nodes, dn.fnode);
     if (!efn) return -ENOENT;
 
     pthread_mutex_lock(&efn->m);

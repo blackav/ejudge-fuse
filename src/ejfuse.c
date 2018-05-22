@@ -744,7 +744,7 @@ find_compiler(struct EjFuseRequest *efr, const unsigned char *name_or_id)
 static int
 ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
 {
-    file_nodes_list(efr->ejs->file_nodes);
+    file_nodes_list(efr->efs->file_nodes);
 
     unsigned char lang_buf[NAME_MAX + 1];
     if (path[0] != '/') return -ENOENT;
@@ -802,7 +802,7 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
 {
     memset(efr, 0, sizeof(*efr));
     efr->fx = fuse_get_context();
-    efr->ejs = (struct EjFuseState *) efr->fx->private_data;
+    efr->efs = (struct EjFuseState *) efr->fx->private_data;
     efr->current_time_us = get_current_time();
     // safety
     if (!path || path[0] != '/') {
@@ -841,18 +841,18 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
         if (cnts_id <= 0 || (int) cnts_id != cnts_id) return -ENOENT;
         efr->contest_id = cnts_id;
     }
-    if (!contests_is_valid(efr->ejs, efr->contest_id)) {
+    if (!contests_is_valid(efr->efs, efr->contest_id)) {
         return -ENOENT;
     }
-    if (!(efr->ecs = contests_state_get(efr->ejs->contests_state, efr->contest_id))) {
+    if (!(efr->ecs = contests_state_get(efr->efs->contests_state, efr->contest_id))) {
         return -ENOENT;
     }
     const char *p2 = strchr(p1 + 1, '/');
     if (!p2) {
         if (!strcmp(p1 + 1, "INFO") || !strcmp(p1 + 1, "info.json")) {
             efr->file_name = p1 + 1;
-            contest_session_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
-            contest_info_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
+            contest_session_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
+            contest_info_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
             efr->ops = &ejfuse_contest_info_operations;
             return 0;
         }
@@ -861,15 +861,15 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
             return 0;
         }
         if (!strcmp(p1 + 1, "problems")) {
-            contest_session_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
-            contest_info_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
+            contest_session_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
+            contest_info_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
             efr->ops = &ejfuse_contest_problems_operations;
             return 0;
         }
         return -ENOENT;
     }
-    contest_session_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
-    contest_info_maybe_update(efr->ejs, efr->ecs, efr->current_time_us);
+    contest_session_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
+    contest_info_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
     // next component: [p1 + 1, p2)
     // check for problems
     if (p2 - p1 - 1 != 8 || memcmp(p1 + 1, "problems", 8)) {
@@ -914,7 +914,7 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
         if (find_problem(efr, prob_name_buf) < 0) {
             return -ENOENT;
         }
-        problem_info_maybe_update(efr->ejs, efr->ecs, efr->eps, efr->current_time_us);
+        problem_info_maybe_update(efr->efs, efr->ecs, efr->eps, efr->current_time_us);
     }
     const char *p4 = strchr(p3 + 1, '/');
     if (!p4) {
@@ -1051,34 +1051,34 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    struct EjFuseState *ejs = calloc(1, sizeof(*ejs));
-    ejs->url = strdup(ej_url);
-    ejs->login = strdup(ej_user);
-    ejs->password = strdup(ej_password);
-    ejs->owner_uid = getuid();
-    ejs->owner_gid = getgid();
-    ejs->inode_hash = inode_hash_create();
-    ejs->contests_state = contests_state_create();
-    ejs->file_nodes = file_nodes_create(NODE_QUOTA, SIZE_QUOTA);
-    ejs->submit_thread = submit_thread_create();
+    struct EjFuseState *efs = calloc(1, sizeof(*efs));
+    efs->url = strdup(ej_url);
+    efs->login = strdup(ej_user);
+    efs->password = strdup(ej_password);
+    efs->owner_uid = getuid();
+    efs->owner_gid = getgid();
+    efs->inode_hash = inode_hash_create();
+    efs->contests_state = contests_state_create();
+    efs->file_nodes = file_nodes_create(NODE_QUOTA, SIZE_QUOTA);
+    efs->submit_thread = submit_thread_create();
 
-    submit_thread_start(ejs->submit_thread, ejs);
+    submit_thread_start(efs->submit_thread, efs);
 
     long long current_time_us = get_current_time();
-    ejs->start_time_us = current_time_us;
+    efs->start_time_us = current_time_us;
 
-    ej_get_top_level_session(ejs, current_time_us);
-    if (!ejs->top_session->ok) {
-        fprintf(stderr, "initial login failed: %s\n", ejs->top_session->log_s);
+    ej_get_top_level_session(efs, current_time_us);
+    if (!efs->top_session->ok) {
+        fprintf(stderr, "initial login failed: %s\n", efs->top_session->log_s);
         return 1;
     }
-    ej_get_contest_list(ejs, current_time_us);
-    if (!ejs->contests->ok) {
-        fprintf(stderr, "initial contest list failed: %s\n", ejs->top_session->log_s);
+    ej_get_contest_list(efs, current_time_us);
+    if (!efs->contests->ok) {
+        fprintf(stderr, "initial contest list failed: %s\n", efs->top_session->log_s);
         return 1;
     }
 
-    int retval = fuse_main(argc, argv, &ejf_fuse_operations, ejs);
-    free(ejs);
+    int retval = fuse_main(argc, argv, &ejf_fuse_operations, efs);
+    free(efs);
     return retval;
 }
