@@ -20,4 +20,4 @@
  */
 
 struct EjFuseOperations;
-extern const struct EjFuseOperations ejfuse_contest_runs_operations;
+extern const struct EjFuseOperations ejfuse_contest_problem_runs_operations;

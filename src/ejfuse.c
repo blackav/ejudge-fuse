@@ -925,6 +925,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
             efr->ops = &ejfuse_contest_problem_files_operations;
             return 0;
         } else if (!strcmp(p3 + 1, "runs")) {
+            efr->ops = &ejfuse_contest_problem_runs_operations;
+            return 0;
         } else if (!strcmp(p3 + 1, "submit")) {
             efr->ops = &ejfuse_contest_problem_submit_operations;
             return 0;
