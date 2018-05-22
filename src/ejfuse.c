@@ -28,6 +28,8 @@
 #include <openssl/sha.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <ctype.h>
+#include <termios.h>
 
 #include "cJSON.h"
 #include "inode_hash.h"
@@ -946,8 +948,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
 
 int main(int argc, char *argv[])
 {
-    const unsigned char *ej_user = NULL;
-    const unsigned char *ej_password = NULL;
+    unsigned char *ej_user = NULL;
+    unsigned char *ej_password = NULL;
     const unsigned char *ej_url = NULL;
 
     int work = 0;
@@ -958,7 +960,11 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "--user specified more than once\n");
                 return 1;
             }
-            ej_user = argv[2];
+            ej_user = strdup(argv[2]);
+            char *ptr = argv[1];
+            while (*ptr) *ptr++ = 0;
+            ptr = argv[2];
+            while (*ptr) *ptr++ = 0;
             memmove(&argv[1], &argv[3], (argc - 2) * sizeof(argv[0]));
             argc -= 2;
             work = 1;
@@ -967,7 +973,11 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "--password specified more than once\n");
                 return 1;
             }
-            ej_password = argv[2];
+            ej_password = strdup(argv[2]);
+            char *ptr = argv[1];
+            while (*ptr) *ptr++ = 0;
+            ptr = argv[2];
+            while (*ptr) *ptr++ = 0;
             memmove(&argv[1], &argv[3], (argc - 2) * sizeof(argv[0]));
             argc -= 2;
             work = 1;
@@ -982,9 +992,46 @@ int main(int argc, char *argv[])
             work = 1;
         }
     } while (work);
+    if (!ej_user && isatty(0)) {
+        fprintf(stdout, "Login: "); fflush(stdout);
+        size_t n = 0;
+        ssize_t sz = getline((char**) &ej_user, &n, stdin);
+        if (sz < 0) {
+            fprintf(stderr, "--user not specified\n");
+            return 1;
+        }
+        while (sz > 0 && isspace(ej_user[sz - 1])) --sz;
+        ej_user[sz] = 0;
+        if (!sz) {
+            free(ej_user); ej_user = NULL;
+        }
+        free(ej_password); ej_password = NULL;
+    }
     if (!ej_user) {
         fprintf(stderr, "--user not specified\n");
         return 1;
+    }
+    if (!ej_password && isatty(0)) {
+        struct termios old, new;
+        if (tcgetattr(0, &old) >= 0) {
+            new = old;
+            new.c_lflag &= ~ECHO;
+            if (tcsetattr(0, TCSAFLUSH, &new) >= 0) {
+                fprintf(stdout, "Password: "); fflush(stdout);
+                size_t n = 0;
+                ssize_t sz = getline((char**) &ej_password, &n, stdin);
+                if (sz > 0) {
+                    while (sz > 0 && isspace(ej_password[sz - 1])) --sz;
+                    ej_password[sz] = 0;
+                    if (!sz) {
+                        free(ej_password); ej_password = NULL;
+                    }
+                } else {
+                    free(ej_password); ej_password = NULL;
+                }
+                tcsetattr(0, TCSAFLUSH, &old);
+            }
+        }
     }
     if (!ej_password) {
         fprintf(stderr, "--password not specified\n");
