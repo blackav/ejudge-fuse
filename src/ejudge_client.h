@@ -68,3 +68,13 @@ ejudge_client_problem_statement_request(
         int prob_id,
         long long current_time_us,
         struct EjProblemStatement *eph); // output
+int
+ejudge_client_submit_run_request(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int prob_id,
+        int lang_id,
+        const unsigned char *data,
+        int size,
+        long long current_time_us);

@@ -21,6 +21,7 @@
 #include "contests_state.h"
 #include "ejfuse.h"
 #include "ejfuse_file.h"
+#include "ejudge_client.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,12 +121,11 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
     gettimeofday(&tv, NULL);
     current_time_us = tv.tv_sec * 1000000LL + tv.tv_usec;
 
+    /*
     fprintf(stderr, "SUBMIT: %lld, %lld, %d, %d, %d, %d, %s\n",
             si->submit_time_us, current_time_us, si->cnts_id, si->prob_id, si->lang_id, si->fnode, si->fname);
+    */
 
-    // validate everything
-    // FIXME: update contest list
-    // validate cnts_id
     struct EjContestList *contests = contest_list_read_lock(st->efs);
     if (!contests) {
         return;
@@ -141,6 +141,9 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
     }
     contest_session_maybe_update(st->efs, ecs, current_time_us);
     contest_info_maybe_update(st->efs, ecs, current_time_us);
+
+    struct EjSessionValue esv = {};
+    if (!contest_state_copy_session(ecs, &esv)) return;
 
     struct EjContestInfo *eci = contest_info_read_lock(ecs);
     if (si->prob_id <= 0 || si->prob_id >= eci->prob_size || !eci->probs[si->prob_id]) {
@@ -187,8 +190,18 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
     if (!efn) {
         return;
     }
-    // FIXME: operate on EjFileNode
+
+    // make a copy!
+    pthread_mutex_lock(&efn->m);
+    int copy_size = efn->size;
+    unsigned char *copy_data = malloc(copy_size + 1);
+    memcpy(copy_data, efn->data, copy_size);
+    copy_data[copy_size] = 0;
+    pthread_mutex_unlock(&efn->m);
     atomic_fetch_sub_explicit(&efn->refcnt, 1, memory_order_relaxed); efn = NULL;
+
+    ejudge_client_submit_run_request(st->efs, ecs, &esv, si->prob_id, si->lang_id, copy_data, copy_size, current_time_us);
+    free(copy_data); copy_data = NULL;
 
     // remove the entry
     res = dir_nodes_unlink_node_by_fnode(epcs->dir_nodes, si->fnode, &dn);

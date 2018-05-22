@@ -1069,3 +1069,150 @@ failed:
     contest_log_format(current_time_us, ecs, "problem-statement-json", 0, NULL);
     goto cleanup;
 }
+
+int
+ejudge_client_submit_run_request(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int prob_id,
+        int lang_id,
+        const unsigned char *data,
+        int size,
+        long long current_time_us)
+{
+    int retval = -1;
+    char *err_s = NULL;
+    size_t err_z = 0;
+    FILE *err_f = NULL;
+    CURL *curl = NULL;
+    char *url_s = NULL;
+    struct curl_httppost *post_head = NULL;
+    struct curl_httppost *post_tail = NULL;
+    char *resp_s = NULL;
+    CURLcode res = 0;
+    cJSON *root = NULL;
+
+    err_f = open_memstream(&err_s, &err_z);
+
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(err_f, "curl_easy_init failed\n");
+        goto failed;
+    }
+
+    {
+        size_t url_z = 0;
+        FILE *url_f = open_memstream(&url_s, &url_z);
+        fprintf(url_f, "%sclient/submit-run", ejs->url);
+        fclose(url_f);
+    }
+
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "SID",
+                 CURLFORM_COPYCONTENTS, esv->session_id,
+                 CURLFORM_END);
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "EJSID",
+                 CURLFORM_COPYCONTENTS, esv->client_key,
+                 CURLFORM_END);
+    unsigned char buf[64];
+    snprintf(buf, sizeof(buf), "%d", prob_id);
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "prob_id",
+                 CURLFORM_COPYCONTENTS, buf,
+                 CURLFORM_END);
+    snprintf(buf, sizeof(buf), "%d", lang_id);
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "lang_id",
+                 CURLFORM_COPYCONTENTS, buf,
+                 CURLFORM_END);
+    snprintf(buf, sizeof(buf), "%d", 1);
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "json",
+                 CURLFORM_COPYCONTENTS, buf,
+                 CURLFORM_END);
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "file",
+                 CURLFORM_PTRCONTENTS, data,
+                 CURLFORM_CONTENTSLENGTH, (long) size,
+                 CURLFORM_END);
+
+    {
+        size_t resp_z = 0;
+        FILE *resp_f = open_memstream(&resp_s, &resp_z);
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_URL, url_s);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp_f);
+        curl_easy_setopt(curl, CURLOPT_HTTPPOST, post_head);
+        res = curl_easy_perform(curl);
+        fclose(resp_f);
+
+    }
+    if (res != CURLE_OK) {
+        fprintf(err_f, "request failed: %s\n", curl_easy_strerror(res));
+        goto failed;
+    }
+
+    fprintf(stdout, ">%s<\n", resp_s);
+
+    root = cJSON_Parse(resp_s);
+    if (!root) {
+        fprintf(err_f, "json parse failed\n");
+        goto failed;
+    }
+    if (root->type != cJSON_Object) {
+        goto invalid_json;
+    }
+    cJSON *jok = cJSON_GetObjectItem(root, "ok");
+    if (!jok) {
+        goto invalid_json;
+    }
+    int run_id = -1;
+    if (jok->type == cJSON_True) {
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+        cJSON *jrun_id = cJSON_GetObjectItem(jresult, "run_id");
+        if (!jrun_id || jrun_id->type != cJSON_Number) goto invalid_json;
+        run_id = jrun_id->valueint;
+    } else if (jok->type == cJSON_False) {
+        fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
+        goto failed;
+    } else {
+        goto invalid_json;
+    }
+
+    contest_log_format(current_time_us, ecs, "submit-run", 1, "%d %d %d %d -> %d",
+                       ecs->cnts_id, prob_id, lang_id, (int) size, run_id);
+    retval = 0;
+
+cleanup:
+    if (root) {
+        cJSON_Delete(root);
+    }
+    free(resp_s);
+    curl_formfree(post_head);
+    free(url_s);
+    if (curl) {
+        curl_easy_cleanup(curl);
+    }
+    if (err_f) {
+        fclose(err_f);
+    }
+    free(err_s);
+    return retval;
+
+invalid_json:
+    fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
+
+failed:
+    if (err_f) {
+        fclose(err_f); err_f = NULL;
+    }
+    contest_log_format(current_time_us, ecs, "submit-run", 0, "%d %d %d %d -> %d %s",
+                       ecs->cnts_id, prob_id, lang_id, (int) size, (int) err_z, err_s);
+    free(err_s); err_s = NULL;
+    goto cleanup;
+}
