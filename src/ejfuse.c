@@ -50,6 +50,7 @@
 #include "ejudge_client.h"
 #include "ejfuse_file.h"
 #include "submit_thread.h"
+#include "ops_cnts_prob_runs.h"
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
