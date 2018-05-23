@@ -33,8 +33,8 @@ HFILES = \
  ops_cnts_prob_runs.h\
  ops_cnts_probs.h\
  ops_cnts_prob_submit.h\
- ops_cnts_prob_submit_compiler.h\
- ops_cnts_prob_submit_compiler_dir.h\
+ ops_cnts_prob_submit_comp.h\
+ ops_cnts_prob_submit_comp_dir.h\
  ops_fuse.h\
  ops_generic.h\
  ops_root.h\
@@ -57,8 +57,8 @@ CFILES = \
  ops_cnts_prob_runs.c\
  ops_cnts_probs.c\
  ops_cnts_prob_submit.c\
- ops_cnts_prob_submit_compiler.c\
- ops_cnts_prob_submit_compiler_dir.c\
+ ops_cnts_prob_submit_comp.c\
+ ops_cnts_prob_submit_comp_dir.c\
  ops_fuse.c\
  ops_generic.c\
  ops_root.c\

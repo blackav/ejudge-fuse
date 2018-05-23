@@ -17,7 +17,7 @@
  * along with Ejudge-fuse.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ops_cnts_prob_submit_compiler_dir.h"
+#include "ops_cnts_prob_submit_comp_dir.h"
 
 #include "ejfuse.h"
 #include "ops_generic.h"
