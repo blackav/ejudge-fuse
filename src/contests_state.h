@@ -371,3 +371,4 @@ struct EjProblemRuns *problem_runs_read_lock(struct EjProblemState *eps);
 void problem_runs_read_unlock(struct EjProblemRuns *eprs);
 int problem_runs_try_write_lock(struct EjProblemState *eps);
 void problem_runs_set(struct EjProblemState *eps, struct EjProblemRuns *eprs);
+struct EjProblemRun *problem_runs_find_unlocked(struct EjProblemRuns *eprs, int run_id);

@@ -932,3 +932,23 @@ problem_runs_set(struct EjProblemState *eps, struct EjProblemRuns *eprs)
         problem_runs_free(old);
     }
 }
+
+struct EjProblemRun *
+problem_runs_find_unlocked(struct EjProblemRuns *eprs, int run_id)
+{
+    if (!eprs || !eprs->ok || eprs->size <= 0) return NULL;
+
+    int low = 0, high = eprs->size;
+    while (low < high) {
+        int mid = (low + high) / 2;
+        struct EjProblemRun *cur = &eprs->runs[mid];
+        if (cur->run_id == run_id) {
+            return cur;
+        } else if (cur->run_id < run_id) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return NULL;
+}
