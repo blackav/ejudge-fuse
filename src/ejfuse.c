@@ -111,14 +111,14 @@ request_free(struct EjFuseRequest *rq, int retval)
 }
 
 struct EjTopSession *
-top_session_read_lock(struct EjFuseState *ejs)
+top_session_read_lock(struct EjFuseState *efs)
 {
     struct EjTopSession *top_session = NULL;
 
-    atomic_fetch_add_explicit(&ejs->top_session_guard, 1, memory_order_acquire);
-    top_session = atomic_load_explicit(&ejs->top_session, memory_order_relaxed);
+    atomic_fetch_add_explicit(&efs->top_session_guard, 1, memory_order_acquire);
+    top_session = atomic_load_explicit(&efs->top_session, memory_order_relaxed);
     atomic_fetch_add_explicit(&top_session->reader_count, 1, memory_order_relaxed);
-    atomic_fetch_sub_explicit(&ejs->top_session_guard, 1, memory_order_release);
+    atomic_fetch_sub_explicit(&efs->top_session_guard, 1, memory_order_release);
     return top_session;
 }
 
@@ -131,21 +131,21 @@ top_session_read_unlock(struct EjTopSession *tls)
 }
 
 int
-top_session_try_write_lock(struct EjFuseState *ejs)
+top_session_try_write_lock(struct EjFuseState *efs)
 {
-    return atomic_exchange_explicit(&ejs->top_session_update, 1, memory_order_relaxed);
+    return atomic_exchange_explicit(&efs->top_session_update, 1, memory_order_relaxed);
 }
 
 void
-top_session_set(struct EjFuseState *ejs, struct EjTopSession *top_session)
+top_session_set(struct EjFuseState *efs, struct EjTopSession *top_session)
 {
-    struct EjTopSession *old_session = atomic_exchange_explicit(&ejs->top_session, top_session, memory_order_acquire);
+    struct EjTopSession *old_session = atomic_exchange_explicit(&efs->top_session, top_session, memory_order_acquire);
     int expected = 0;
     // spinlock
-    while (!atomic_compare_exchange_weak_explicit(&ejs->top_session_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+    while (!atomic_compare_exchange_weak_explicit(&efs->top_session_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
         expected = 0;
     }
-    atomic_store_explicit(&ejs->top_session_update, 0, memory_order_release);
+    atomic_store_explicit(&efs->top_session_update, 0, memory_order_release);
 
     if (old_session) {
         expected = 0;
@@ -158,14 +158,14 @@ top_session_set(struct EjFuseState *ejs, struct EjTopSession *top_session)
 }
 
 struct EjContestList *
-contest_list_read_lock(struct EjFuseState *ejs)
+contest_list_read_lock(struct EjFuseState *efs)
 {
     struct EjContestList *contests = NULL;
 
-    atomic_fetch_add_explicit(&ejs->contests_guard, 1, memory_order_acquire);
-    contests = atomic_load_explicit(&ejs->contests, memory_order_relaxed);
+    atomic_fetch_add_explicit(&efs->contests_guard, 1, memory_order_acquire);
+    contests = atomic_load_explicit(&efs->contests, memory_order_relaxed);
     atomic_fetch_add_explicit(&contests->reader_count, 1, memory_order_relaxed);
-    atomic_fetch_sub_explicit(&ejs->contests_guard, 1, memory_order_release);
+    atomic_fetch_sub_explicit(&efs->contests_guard, 1, memory_order_release);
     return contests;
 }
 
@@ -178,20 +178,20 @@ contest_list_read_unlock(struct EjContestList *contests)
 }
 
 int
-contest_list_try_write_lock(struct EjFuseState *ejs)
+contest_list_try_write_lock(struct EjFuseState *efs)
 {
-    return atomic_exchange_explicit(&ejs->contests_update, 1, memory_order_relaxed);
+    return atomic_exchange_explicit(&efs->contests_update, 1, memory_order_relaxed);
 }
 
 void
-contest_list_set(struct EjFuseState *ejs, struct EjContestList *contests)
+contest_list_set(struct EjFuseState *efs, struct EjContestList *contests)
 {
-    struct EjContestList *old_contests = atomic_exchange_explicit(&ejs->contests, contests, memory_order_acquire);
+    struct EjContestList *old_contests = atomic_exchange_explicit(&efs->contests, contests, memory_order_acquire);
     int expected = 0;
-    while (!atomic_compare_exchange_weak_explicit(&ejs->contests_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+    while (!atomic_compare_exchange_weak_explicit(&efs->contests_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
         expected = 0;
     }
-    atomic_store_explicit(&ejs->contests_update, 0, memory_order_release);
+    atomic_store_explicit(&efs->contests_update, 0, memory_order_release);
 
     // spinlock
     if (old_contests) {
@@ -231,16 +231,16 @@ contest_list_find(const struct EjContestList *contests, int cnts_id)
 }
 
 static _Bool
-contests_is_valid(struct EjFuseState *ejs, int cnts_id)
+contests_is_valid(struct EjFuseState *efs, int cnts_id)
 {
-    struct EjContestList *contests = contest_list_read_lock(ejs);
+    struct EjContestList *contests = contest_list_read_lock(efs);
     struct EjContestListItem *cnts = contest_list_find(contests, cnts_id);
     contest_list_read_unlock(contests);
     return cnts != NULL;
 }
 
 void
-ej_get_top_level_session(struct EjFuseState *ejs, long long current_time_us)
+ej_get_top_level_session(struct EjFuseState *efs, long long current_time_us)
 {
     struct EjTopSession *tls = NULL;
     char *err_s = NULL;
@@ -254,7 +254,7 @@ ej_get_top_level_session(struct EjFuseState *ejs, long long current_time_us)
     CURL *curl = NULL;
 
     // don't want parallel updates
-    if (top_session_try_write_lock(ejs)) return;
+    if (top_session_try_write_lock(efs)) return;
 
     err_f = open_memstream(&err_s, &err_z);
     tls = calloc(1, sizeof(*tls));
@@ -267,17 +267,17 @@ ej_get_top_level_session(struct EjFuseState *ejs, long long current_time_us)
     {
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sregister/login-json", ejs->url);
+        fprintf(url_f, "%sregister/login-json", efs->url);
         fclose(url_f); url_f = NULL;
     }
 
     {
         size_t post_z = 0;
         FILE *post_f = open_memstream(&post_s, &post_z);
-        char *s = curl_easy_escape(curl, ejs->login, 0);
+        char *s = curl_easy_escape(curl, efs->login, 0);
         fprintf(post_f, "login=%s", s);
         free(s);
-        s = curl_easy_escape(curl, ejs->password, 0);
+        s = curl_easy_escape(curl, efs->password, 0);
         fprintf(post_f, "&password=%s", s);
         free(s); s = NULL;
         fprintf(post_f, "&json=1");
@@ -401,7 +401,7 @@ ej_get_top_level_session(struct EjFuseState *ejs, long long current_time_us)
         fclose(err_f); err_f = NULL;
     }
     free(err_s);
-    return top_session_set(ejs, tls);
+    return top_session_set(efs, tls);
 
 invalid_json:
     fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
@@ -416,10 +416,10 @@ failed:
 }
 
 void
-top_session_maybe_update(struct EjFuseState *ejs, long long current_time_us)
+top_session_maybe_update(struct EjFuseState *efs, long long current_time_us)
 {
     int update_needed = 0;
-    struct EjTopSession *top_session = top_session_read_lock(ejs);
+    struct EjTopSession *top_session = top_session_read_lock(efs);
     if (top_session->ok) {
         if (top_session->expire_us > 0 && current_time_us >= top_session->expire_us - 100000000) { // 100s
             update_needed = 1;
@@ -435,15 +435,15 @@ top_session_maybe_update(struct EjFuseState *ejs, long long current_time_us)
     }
     top_session_read_unlock(top_session);
     if (update_needed) {
-      ej_get_top_level_session(ejs, current_time_us);
+      ej_get_top_level_session(efs, current_time_us);
     }
 }
 
 int
-top_session_copy_session(struct EjFuseState *ejs, struct EjSessionValue *esv)
+top_session_copy_session(struct EjFuseState *efs, struct EjSessionValue *esv)
 {
     esv->ok = 0;
-    struct EjTopSession *ets = top_session_read_lock(ejs);
+    struct EjTopSession *ets = top_session_read_lock(efs);
     if (!ets || !ets->ok) {
         top_session_read_unlock(ets);
         return 0;
@@ -457,19 +457,19 @@ top_session_copy_session(struct EjFuseState *ejs, struct EjSessionValue *esv)
 
 
 void
-ej_get_contest_list(struct EjFuseState *ejs, long long current_time_us)
+ej_get_contest_list(struct EjFuseState *efs, long long current_time_us)
 {
     struct EjSessionValue esv = {};
     struct EjContestList *contests = NULL;
 
-    if (!top_session_copy_session(ejs, &esv)) return;
-    if (contest_list_try_write_lock(ejs)) return;
+    if (!top_session_copy_session(efs, &esv)) return;
+    if (contest_list_try_write_lock(efs)) return;
 
     contests = calloc(1, sizeof(*contests));
 
-    ejudge_client_get_contest_list_request(ejs, &esv, current_time_us, contests);
+    ejudge_client_get_contest_list_request(efs, &esv, current_time_us, contests);
 
-    contest_list_set(ejs, contests);
+    contest_list_set(efs, contests);
     return;
 
 }
@@ -512,7 +512,7 @@ contest_log_format(
 
 void
 ejudge_client_enter_contest(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         long long current_time_us)
 {
@@ -521,17 +521,17 @@ ejudge_client_enter_contest(
     int already = contest_session_try_write_lock(ecs);
     if (already) return;
 
-    if (!top_session_copy_session(ejs, &esv)) return;
+    if (!top_session_copy_session(efs, &esv)) return;
 
     struct EjContestSession *ecc = calloc(1, sizeof(*ecc));
     ecc->cnts_id = ecs->cnts_id;
-    ejudge_client_enter_contest_request(ejs, ecs, &esv, current_time_us, ecc);
+    ejudge_client_enter_contest_request(efs, ecs, &esv, current_time_us, ecc);
     contest_session_set(ecs, ecc);
 }
 
 void
 contest_session_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         long long current_time_us)
 {
@@ -553,13 +553,13 @@ contest_session_maybe_update(
     contest_session_read_unlock(ecc);
     if (!update_needed) return;
 
-    top_session_maybe_update(ejs, current_time_us);
-    ejudge_client_enter_contest(ejs, ecs, current_time_us);
+    top_session_maybe_update(efs, current_time_us);
+    ejudge_client_enter_contest(efs, ecs, current_time_us);
 }
 
 void
 ejudge_client_contest_info(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         long long current_time_us)
 {
@@ -570,13 +570,13 @@ ejudge_client_contest_info(
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     struct EjContestInfo *eci = contest_info_create(ecs->cnts_id);
-    ejudge_client_contest_info_request(ejs, ecs, &esv, current_time_us, eci);
+    ejudge_client_contest_info_request(efs, ecs, &esv, current_time_us, eci);
     contest_info_set(ecs, eci);
 }
 
 void
 contest_info_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         long long current_time_us)
 {
@@ -596,12 +596,12 @@ contest_info_maybe_update(
     contest_info_read_unlock(eci);
     if (!update_needed) return;
 
-    ejudge_client_contest_info(ejs, ecs, current_time_us);
+    ejudge_client_contest_info(efs, ecs, current_time_us);
 }
 
 void
 problem_info_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us)
@@ -628,13 +628,13 @@ problem_info_maybe_update(
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     epi = problem_info_create(eps->prob_id);
-    ejudge_client_problem_info_request(ejs, ecs, &esv, eps->prob_id, current_time_us, epi);
+    ejudge_client_problem_info_request(efs, ecs, &esv, eps->prob_id, current_time_us, epi);
     problem_info_set(eps, epi);
 }
 
 void
 problem_statement_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us)
@@ -668,13 +668,13 @@ problem_statement_maybe_update(
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     eph = problem_statement_create(eps->prob_id);
-    ejudge_client_problem_statement_request(ejs, ecs, &esv, eps->prob_id, current_time_us, eph);
+    ejudge_client_problem_statement_request(efs, ecs, &esv, eps->prob_id, current_time_us, eph);
     problem_statement_set(eps, eph);
 }
 
 void
 problem_runs_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us)
@@ -701,12 +701,12 @@ problem_runs_maybe_update(
     if (!contest_state_copy_session(ecs, &esv)) return;
 
     eprs = problem_runs_create(eps->prob_id);
-    ejudge_client_problem_runs_request(ejs, ecs, &esv, eps->prob_id, current_time_us, eprs);
+    ejudge_client_problem_runs_request(efs, ecs, &esv, eps->prob_id, current_time_us, eprs);
     problem_runs_set(eps, eprs);
 }
 
 unsigned
-get_inode(struct EjFuseState *ejs, const char *path)
+get_inode(struct EjFuseState *efs, const char *path)
 {
     unsigned char digest[SHA256_DIGEST_LENGTH];
     size_t len = strlen(path);
@@ -716,7 +716,7 @@ get_inode(struct EjFuseState *ejs, const char *path)
     SHA256_Update(&ctx, path, len);
     SHA256_Final(digest, &ctx);
 
-    return inode_hash_insert(ejs->inode_hash, digest)->inode;
+    return inode_hash_insert(efs->inode_hash, digest)->inode;
 }
 
 static int

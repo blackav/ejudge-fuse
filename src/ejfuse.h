@@ -161,9 +161,9 @@ int ejf_process_path(const char *path, struct EjFuseRequest *rq);
 
 int request_free(struct EjFuseRequest *rq, int retval);
 
-unsigned get_inode(struct EjFuseState *ejs, const char *path);
+unsigned get_inode(struct EjFuseState *efs, const char *path);
 
-struct EjContestList *contest_list_read_lock(struct EjFuseState *ejs);
+struct EjContestList *contest_list_read_lock(struct EjFuseState *efs);
 void contest_list_read_unlock(struct EjContestList *contests);
 
 struct EjContestListItem *contest_list_find(const struct EjContestList *contests, int cnts_id);
@@ -173,29 +173,29 @@ struct EjContestState;
 struct EjProblemState;
 void
 contest_session_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         long long current_time_us);
 void
 contest_info_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         long long current_time_us);
 void
 problem_info_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us);
 void
 problem_statement_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us);
 void
 problem_runs_maybe_update(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us);
