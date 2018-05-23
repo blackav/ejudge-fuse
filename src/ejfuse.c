@@ -51,6 +51,7 @@
 #include "ejfuse_file.h"
 #include "submit_thread.h"
 #include "ops_cnts_prob_runs.h"
+#include "ops_cnts_prob_runs_run.h"
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -771,6 +772,74 @@ find_compiler(struct EjFuseRequest *efr, const unsigned char *name_or_id)
 }
 
 /*
+ * /<CNTS>/problems/<PROB>/runs/...
+ *                             ^ path
+ */
+static int
+ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
+{
+    unsigned char run_buf[NAME_MAX + 1];
+    if (path[0] != '/') return -ENOENT;
+    const char *p1 = strchr(path + 1, '/');
+    const char *comma = strchr(path + 1, ',');
+    int len = 0;
+    if (!p1) {
+        if (!comma) {
+            len = strlen(path + 1);
+        } else {
+            len = comma - path - 1;
+        }
+    } else {
+        if (!comma || comma > p1) {
+            len = p1 - path - 1;
+        } else {
+            len = comma - path - 1;
+        }
+    }
+    if (len > NAME_MAX) {
+        return -ENOENT;
+    }
+    memcpy(run_buf, path + 1, len);
+    run_buf[len] = 0;
+
+    if (!strcmp(run_buf, "info.json") || !strcmp(run_buf, "INFO")) {
+        if (p1) {
+            return -ENOTDIR;
+        }
+        // FIXME: handle these files
+        return -ENOENT;
+    }
+
+    errno = 0;
+    char *eptr = NULL;
+    long val = strtol(run_buf, &eptr, 10);
+    if (errno || *eptr || (unsigned char *) eptr == run_buf || val < 0 || (int) val != val) {
+        return -ENOENT;
+    }
+
+    problem_runs_maybe_update(efr->efs, efr->ecs, efr->eps, efr->current_time_us);
+    struct EjProblemRuns *eprs = problem_runs_read_lock(efr->eps);
+    if (!eprs || !eprs->ok || eprs->size <= 0) {
+        problem_runs_read_unlock(eprs);
+        return -ENOENT;
+    }
+    struct EjProblemRun *epr = problem_runs_find_unlocked(eprs, val);
+    if (!epr) {
+        problem_runs_read_unlock(eprs);
+        return -ENOENT;
+    }
+    efr->run_id = epr->run_id;
+    problem_runs_read_unlock(eprs);
+
+    if (!p1) {
+        efr->ops = &ejfuse_contest_problem_runs_run_operations;
+        return 0;
+    }
+
+    return -ENOENT;
+}
+
+/*
  * /<CNTS>/problems/<PROB>/submit/<LANG>...
  *                               ^ path
  */
@@ -977,6 +1046,7 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
     if (!strcmp(pp3, "submit")) {
         return ejf_process_path_submit(p4, efr);
     } else if (!strcmp(pp3, "runs")) {
+        return ejf_process_path_runs(p4, efr);
     }
 
     return -ENOENT;

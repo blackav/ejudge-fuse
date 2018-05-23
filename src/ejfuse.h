@@ -107,6 +107,7 @@ struct EjFuseRequest
     int prob_id;
     struct EjProblemState *eps;
     int lang_id;
+    int run_id;
 };
 
 struct EjFuseRequest;
