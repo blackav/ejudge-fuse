@@ -40,7 +40,7 @@ contest_log_format(
 
 void
 ejudge_client_get_contest_list_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         const struct EjSessionValue *esv,
         long long current_time_us, 
         struct EjContestList *contests)
@@ -65,7 +65,7 @@ ejudge_client_get_contest_list_request(
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
         fprintf(url_f, "%sregister/user-contests-json?SID=%s&EJSID=%s&json=1",
-                ejs->url,
+                efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)));
         free(s1);
@@ -195,7 +195,7 @@ failed:
 
 void
 ejudge_client_enter_contest_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         long long current_time_us,
@@ -221,7 +221,7 @@ ejudge_client_enter_contest_request(
     {
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sregister/enter-contest-json", ejs->url);
+        fprintf(url_f, "%sregister/enter-contest-json", efs->url);
         fclose(url_f); url_f = NULL;
     }
 
@@ -356,7 +356,7 @@ failed:
 
 void
 ejudge_client_contest_info_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         long long current_time_us,
@@ -383,7 +383,7 @@ ejudge_client_contest_info_request(
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
         fprintf(url_f, "%sclient/contest-status-json?SID=%s&EJSID=%s&json=1",
-                ejs->url,
+                efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)));
         free(s1);
@@ -508,7 +508,7 @@ ejudge_client_contest_info_request(
     }
 
     // normal return
-    //contest_log_format(ejs, ecs, "contest-status-json", 1, NULL);
+    //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
     eci->log_s = NULL;
     eci->recheck_time_us = current_time_us + 10000000; // +10s
     eci->ok = 1;
@@ -567,7 +567,7 @@ failed:
  */
 void
 ejudge_client_problem_info_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -595,7 +595,7 @@ ejudge_client_problem_info_request(
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
         fprintf(url_f, "%sclient/problem-status-json?SID=%s&EJSID=%s&problem=%d&json=1",
-                ejs->url,
+                efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
                 prob_id);
@@ -950,7 +950,7 @@ ejudge_client_problem_info_request(
     }
 
     // normal return
-    //contest_log_format(ejs, ecs, "contest-status-json", 1, NULL);
+    //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
     epi->log_s = NULL;
     epi->recheck_time_us = current_time_us + 10000000; // +10s
     epi->ok = 1;
@@ -985,7 +985,7 @@ failed:
 
 void
 ejudge_client_problem_statement_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -1012,7 +1012,7 @@ ejudge_client_problem_statement_request(
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
         fprintf(url_f, "%sclient/problem-statement-json?SID=%s&EJSID=%s&problem=%d&json=1",
-                ejs->url,
+                efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
                 prob_id);
@@ -1040,7 +1040,7 @@ ejudge_client_problem_statement_request(
     fprintf(stdout, ">%s<\n", resp_s);
 
     // normal return
-    //contest_log_format(ejs, ecs, "problem-statement-json", 1, NULL);
+    //contest_log_format(efs, ecs, "problem-statement-json", 1, NULL);
     eph->stmt_text = resp_s; resp_s = NULL;
     eph->stmt_size = strlen(eph->stmt_text);
 
@@ -1072,7 +1072,7 @@ failed:
 
 int
 ejudge_client_submit_run_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -1104,7 +1104,7 @@ ejudge_client_submit_run_request(
     {
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sclient/submit-run", ejs->url);
+        fprintf(url_f, "%sclient/submit-run", efs->url);
         fclose(url_f);
     }
 
@@ -1227,7 +1227,7 @@ sort_runs_func(const void *p1, const void *p2)
 
 void
 ejudge_client_problem_runs_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -1255,7 +1255,7 @@ ejudge_client_problem_runs_request(
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
         fprintf(url_f, "%sclient/list-runs-json?SID=%s&EJSID=%s&prob_id=%d&json=1&mode=1",
-                ejs->url,
+                efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
                 prob_id);
@@ -1354,7 +1354,7 @@ ejudge_client_problem_runs_request(
     }
 
     // normal return
-    //contest_log_format(ejs, ecs, "list-runs-json", 1, NULL);
+    //contest_log_format(efs, ecs, "list-runs-json", 1, NULL);
     eprs->log_s = NULL;
     eprs->recheck_time_us = current_time_us + 10000000; // +10s
     eprs->ok = 1;

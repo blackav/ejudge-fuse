@@ -31,14 +31,14 @@ struct EjProblemRuns;
 
 void
 ejudge_client_get_contest_list_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         const struct EjSessionValue *esv,
         long long current_time_us, 
         struct EjContestList *contests); // output
 
 void
 ejudge_client_enter_contest_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         long long current_time_us,
@@ -46,7 +46,7 @@ ejudge_client_enter_contest_request(
 
 void
 ejudge_client_contest_info_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         long long current_time_us,
@@ -54,7 +54,7 @@ ejudge_client_contest_info_request(
 
 void
 ejudge_client_problem_info_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -63,7 +63,7 @@ ejudge_client_problem_info_request(
 
 void
 ejudge_client_problem_statement_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -71,7 +71,7 @@ ejudge_client_problem_statement_request(
         struct EjProblemStatement *eph); // output
 int
 ejudge_client_submit_run_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
@@ -81,7 +81,7 @@ ejudge_client_submit_run_request(
         long long current_time_us);
 void
 ejudge_client_problem_runs_request(
-        struct EjFuseState *ejs,
+        struct EjFuseState *efs,
         struct EjContestState *ecs,
         const struct EjSessionValue *esv,
         int prob_id,
