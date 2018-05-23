@@ -17,7 +17,7 @@
  * along with Ejudge-fuse.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ops_contest.h"
+#include "ops_cnts.h"
 
 #include "ejfuse.h"
 #include "ops_generic.h"
