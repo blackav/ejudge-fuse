@@ -28,7 +28,13 @@ struct EjProblemInfo;
 struct EjProblemStatement;
 struct EjSessionValue;
 struct EjProblemRuns;
+struct EjTopSession;
 
+void
+ejudge_client_get_top_session_request(
+        struct EjFuseState *efs,
+        long long current_time_us,
+        struct EjTopSession *tls); // output
 void
 ejudge_client_get_contest_list_request(
         struct EjFuseState *efs,

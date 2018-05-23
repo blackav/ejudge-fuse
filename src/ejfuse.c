@@ -240,182 +240,6 @@ contests_is_valid(struct EjFuseState *efs, int cnts_id)
 }
 
 void
-ej_get_top_level_session(struct EjFuseState *efs, long long current_time_us)
-{
-    struct EjTopSession *tls = NULL;
-    char *err_s = NULL;
-    size_t err_z = 0;
-    FILE *err_f = NULL;
-    char *url_s = NULL;
-    char *post_s = NULL;
-    char *resp_s = NULL;
-    CURLcode res;
-    cJSON *root = NULL;
-    CURL *curl = NULL;
-
-    // don't want parallel updates
-    if (top_session_try_write_lock(efs)) return;
-
-    err_f = open_memstream(&err_s, &err_z);
-    tls = calloc(1, sizeof(*tls));
-    curl = curl_easy_init();
-    if (!curl) {
-        fprintf(err_f, "curl_easy_init failed\n");
-        goto failed;
-    }
-
-    {
-        size_t url_z = 0;
-        FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sregister/login-json", efs->url);
-        fclose(url_f); url_f = NULL;
-    }
-
-    {
-        size_t post_z = 0;
-        FILE *post_f = open_memstream(&post_s, &post_z);
-        char *s = curl_easy_escape(curl, efs->login, 0);
-        fprintf(post_f, "login=%s", s);
-        free(s);
-        s = curl_easy_escape(curl, efs->password, 0);
-        fprintf(post_f, "&password=%s", s);
-        free(s); s = NULL;
-        fprintf(post_f, "&json=1");
-        fclose(post_f); post_f = NULL;
-    }
-
-    {
-        size_t resp_z = 0;
-        FILE *resp_f = open_memstream(&resp_s, &resp_z);
-        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-        curl_easy_setopt(curl, CURLOPT_URL, url_s);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp_f);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_s);
-        curl_easy_setopt(curl, CURLOPT_POST, 1);
-        res = curl_easy_perform(curl);
-        fclose(resp_f);
-    }
-    if (res != CURLE_OK) {
-        fprintf(err_f, "request failed: %s\n", curl_easy_strerror(res));
-        goto failed;
-    }
-
-    free(post_s); post_s = NULL;
-    free(url_s); url_s = NULL;
-    curl_easy_cleanup(curl); curl = NULL;
-
-    fprintf(stdout, ">%s<\n", resp_s);
-    root = cJSON_Parse(resp_s);
-    if (!root) {
-        fprintf(err_f, "json parse failed\n");
-        goto failed;
-    }
-    if (root->type != cJSON_Object) {
-        goto invalid_json;
-    }
-
-    /*
-{
-  "ok": true,
-  "result": {
-    "user_id": 2,
-    "user_login": "user01",
-    "user_name": "user01",
-    "session": "f2615a00b0baff33-d566e2c4cf762312",
-    "SID": "f2615a00b0baff33",
-    "EJSID": "d566e2c4cf762312",
-    "expire": 1526029211
-  }
-}
-{
-  "ok": false,
-  "error": {
-    "num": 29,
-    "symbol": "ERR_PERMISSION_DENIED",
-    "message": "Permission denied",
-    "log_id": "90c4a172"
-  }
-}
-     */
-    
-    cJSON *jok = cJSON_GetObjectItem(root, "ok");
-    if (!jok) {
-        goto invalid_json;
-    }
-    if (jok->type == cJSON_True) {
-        cJSON *jresult = cJSON_GetObjectItem(root, "result");
-        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
-
-        cJSON *jsession_id = cJSON_GetObjectItem(jresult, "SID");
-        if (jsession_id && jsession_id->type == cJSON_String) {
-            tls->session_id = strdup(jsession_id->valuestring);
-        } else {
-            goto invalid_json;
-        }
-        cJSON *jclient_key = cJSON_GetObjectItem(jresult, "EJSID");
-        if (jclient_key && jclient_key->type == cJSON_String) {
-            tls->client_key = strdup(jclient_key->valuestring);
-        } else {
-            goto invalid_json;
-        }
-        cJSON *jexpire = cJSON_GetObjectItem(jresult, "expire");
-        if (jexpire && jexpire->type == cJSON_Number) {
-            tls->expire_us = (time_t) jexpire->valuedouble * 1000000LL;
-        } else {
-            goto invalid_json;
-        }
-        printf("session_id: %s\n", tls->session_id);
-        printf("client_key: %s\n", tls->client_key);
-        printf("expire: %lld\n", (long long) tls->expire_us);
-    } else if (jok->type == cJSON_False) {
-        fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
-        goto failed;
-    } else {
-        goto invalid_json;
-    }
-
-    if (root) {
-        cJSON_Delete(root);
-        root = NULL;
-    }
-    free(resp_s); resp_s = NULL;
-
-    // normal return
-    tls->log_s = NULL;
-    tls->recheck_time_us = 0;
-    tls->ok = 1;
-
- cleanup:
-    if (root) {
-        cJSON_Delete(root);
-    }
-    free(resp_s);
-    if (curl) {
-        curl_easy_cleanup(curl);
-    }
-    free(url_s);
-    free(post_s);
-    if (err_f) {
-        fclose(err_f); err_f = NULL;
-    }
-    free(err_s);
-    return top_session_set(efs, tls);
-
-invalid_json:
-    fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
-    
-failed:
-    if (err_f) {
-        fclose(err_f); err_f = NULL;
-    }
-    tls->log_s = err_s; err_s = NULL;
-    tls->recheck_time_us = current_time_us + 10000000; // 10s
-    goto cleanup;
-}
-
-void
 top_session_maybe_update(struct EjFuseState *efs, long long current_time_us)
 {
     int update_needed = 0;
@@ -434,8 +258,11 @@ top_session_maybe_update(struct EjFuseState *efs, long long current_time_us)
         }
     }
     top_session_read_unlock(top_session);
+
     if (update_needed) {
-      ej_get_top_level_session(efs, current_time_us);
+        top_session = calloc(1, sizeof(*top_session));
+        ejudge_client_get_top_session_request(efs, current_time_us, top_session);
+        top_session_set(efs, top_session);
     }
 }
 
@@ -1170,7 +997,8 @@ int main(int argc, char *argv[])
     long long current_time_us = get_current_time();
     efs->start_time_us = current_time_us;
 
-    ej_get_top_level_session(efs, current_time_us);
+    efs->top_session = calloc(1, sizeof(*efs->top_session));
+    ejudge_client_get_top_session_request(efs, current_time_us, efs->top_session);
     if (!efs->top_session->ok) {
         fprintf(stderr, "initial login failed: %s\n", efs->top_session->log_s);
         return 1;
