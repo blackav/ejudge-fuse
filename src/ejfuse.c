@@ -671,6 +671,39 @@ problem_statement_maybe_update(
     problem_statement_set(eps, eph);
 }
 
+void
+problem_runs_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        struct EjProblemState *eps,
+        long long current_time_us)
+{
+    int update_needed = 0;
+    struct EjProblemRuns *eprs = problem_runs_read_lock(eps);
+    if (eprs && eprs->ok) {
+        if (eprs->recheck_time_us > 0 && current_time_us >= eprs->recheck_time_us) {
+            update_needed = 1;
+        }
+    } else {
+        update_needed = 1;
+        if (eprs && eprs->recheck_time_us > 0 && current_time_us < eprs->recheck_time_us) {
+            update_needed = 0;
+        }
+    }
+    problem_runs_read_unlock(eprs);
+    if (!update_needed) return;
+
+    int already = problem_runs_try_write_lock(eps);
+    if (already) return;
+
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
+
+    eprs = problem_runs_create(eps->prob_id);
+    ejudge_client_problem_runs_request(ejs, ecs, &esv, eps->prob_id, current_time_us, eprs);
+    problem_runs_set(eps, eprs);
+}
+
 unsigned
 get_inode(struct EjFuseState *ejs, const char *path)
 {

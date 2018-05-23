@@ -22,6 +22,7 @@
 #include "ejfuse.h"
 #include "ops_generic.h"
 #include "contests_state.h"
+#include "ejudge.h"
 
 #include <limits.h>
 #include <errno.h>
@@ -91,6 +92,78 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     return retval;
 }
 
+static int
+ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+    if (!epi || !epi->ok || !epi->is_submittable) {
+        problem_info_read_unlock(epi);
+        return -ENOENT;
+    }
+    problem_info_read_unlock(epi);
+    if (efr->efs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+    return 0;
+}
+
+static int
+ejf_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    return 0;
+}
+
+static int
+ejf_readdir(
+        struct EjFuseRequest *efr,
+        const char *path,
+        void *buf,
+        fuse_fill_dir_t filler,
+        off_t offset,
+        struct fuse_file_info *ffi)
+{
+    struct EjFuseState *efs = efr->efs;
+
+    problem_runs_maybe_update(efr->efs, efr->ecs, efr->eps, efr->current_time_us);
+    struct EjProblemRuns *eprs = problem_runs_read_lock(efr->eps);
+    if (!eprs || !eprs->ok) {
+        problem_runs_read_unlock(eprs);
+        return -EIO;
+    }
+
+    unsigned char dot_path[PATH_MAX];
+    snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/runs", efr->contest_id, efr->prob_id);
+    struct stat es;
+    memset(&es, 0, sizeof(es));
+    es.st_ino = get_inode(efs, dot_path);
+    filler(buf, ".", &es, 0);
+
+    unsigned char ddot_path[PATH_MAX];
+    snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    es.st_ino = get_inode(efs, ddot_path);
+    filler(buf, "..", &es, 0);
+
+    for (int i = 0; i < eprs->size; ++i) {
+        struct EjProblemRun *epr = &eprs->runs[i];
+        unsigned char entry_name[PATH_MAX];
+        unsigned char entry_path[PATH_MAX];
+        unsigned char status_str[128];
+        unsigned char score_str[128];
+        run_status_str(epr->status, status_str, sizeof(status_str), 0, 0);
+        score_str[0] = 0;
+        if (epr->score >= 0) {
+            snprintf(score_str, sizeof(score_str), ",%d", epr->score);
+        }
+        snprintf(entry_name, sizeof(entry_name), "%d,%s%s", epr->run_id, status_str, score_str);
+        snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, epr->run_id);
+        es.st_ino = get_inode(efs, entry_path);
+        filler(buf, entry_name, &es, 0);
+    }
+
+    problem_runs_read_unlock(eprs);
+    return 0;
+}
+
 // generic operations
 const struct EjFuseOperations ejfuse_contest_problem_runs_operations =
 {
@@ -117,9 +190,9 @@ const struct EjFuseOperations ejfuse_contest_problem_runs_operations =
     ejf_generic_getxattr, //int (*getxattr)(struct EjFuseRequest *, const char *, const char *, char *, size_t);
     ejf_generic_listxattr, //int (*listxattr)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_removexattr, //int (*removexattr)(struct EjFuseRequest *, const char *, const char *);
-    NULL, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
-    NULL, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_opendir, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
+    ejf_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
     ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
     ejf_generic_create, //int (*create)(struct EjFuseRequest *, const char *, mode_t, struct fuse_file_info *);

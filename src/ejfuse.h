@@ -192,6 +192,12 @@ problem_statement_maybe_update(
         struct EjContestState *ecs,
         struct EjProblemState *eps,
         long long current_time_us);
+void
+problem_runs_maybe_update(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        struct EjProblemState *eps,
+        long long current_time_us);
 
 // directory structure
 #define FN_CONTEST_PROBLEM_INFO           "INFO"

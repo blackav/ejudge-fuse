@@ -27,6 +27,7 @@ struct EjFuseState;
 struct EjProblemInfo;
 struct EjProblemStatement;
 struct EjSessionValue;
+struct EjProblemRuns;
 
 void
 ejudge_client_get_contest_list_request(
@@ -78,3 +79,11 @@ ejudge_client_submit_run_request(
         const unsigned char *data,
         int size,
         long long current_time_us);
+void
+ejudge_client_problem_runs_request(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int prob_id,
+        long long current_time_us,
+        struct EjProblemRuns *eprs); // output

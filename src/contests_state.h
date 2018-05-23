@@ -213,6 +213,32 @@ struct EjProblemCompilerSubmits
 
 struct EjProblemSubmits;
 
+// brief info about run to display as directory listing
+struct EjProblemRun
+{
+    long long run_time_us;
+    int run_id;
+    int prob_id;
+    int status;
+    int score;
+};
+
+struct EjProblemRuns
+{
+    _Atomic int reader_count;
+
+    int prob_id;
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+
+    unsigned char *info_json_text;
+    size_t info_json_size;
+
+    int size;
+    struct EjProblemRun *runs;
+};
+
 // problem state is a container for updateable data structures
 struct EjProblemState
 {
@@ -225,6 +251,10 @@ struct EjProblemState
     _Atomic int stmt_guard;
     struct EjProblemStatement *stmt;
     _Atomic _Bool stmt_update;
+
+    _Atomic int runs_guard;
+    struct EjProblemRuns *runs;
+    _Atomic _Bool runs_update;
 
     struct EjProblemSubmits *submits;
 };
@@ -333,3 +363,11 @@ void problem_compiler_submits_free(struct EjProblemCompilerSubmits *epcs);
 struct EjProblemSubmits *problem_submits_create(void);
 void problem_submits_free(struct EjProblemSubmits *epss);
 struct EjProblemCompilerSubmits *problem_submits_get(struct EjProblemSubmits *epss, int lang_id);
+
+struct EjProblemRuns *problem_runs_create(int prob_id);
+void problem_runs_free(struct EjProblemRuns *eprs);
+
+struct EjProblemRuns *problem_runs_read_lock(struct EjProblemState *eps);
+void problem_runs_read_unlock(struct EjProblemRuns *eprs);
+int problem_runs_try_write_lock(struct EjProblemState *eps);
+void problem_runs_set(struct EjProblemState *eps, struct EjProblemRuns *eprs);

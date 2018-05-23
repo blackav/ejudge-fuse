@@ -1216,3 +1216,173 @@ failed:
     free(err_s); err_s = NULL;
     goto cleanup;
 }
+
+static int
+sort_runs_func(const void *p1, const void *p2)
+{
+    const struct EjProblemRun *r1 = (const struct EjProblemRun *) p1;
+    const struct EjProblemRun *r2 = (const struct EjProblemRun *) p2;
+    return (r1->run_id - r2->run_id);
+}
+
+void
+ejudge_client_problem_runs_request(
+        struct EjFuseState *ejs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int prob_id,
+        long long current_time_us,
+        struct EjProblemRuns *eprs) // output
+{
+    char *err_s = NULL;
+    size_t err_z = 0;
+    FILE *err_f = NULL;
+    CURL *curl = NULL;
+    char *url_s = NULL;
+    char *resp_s = NULL;
+    CURLcode res = 0;
+    cJSON *root = NULL;
+
+    err_f = open_memstream(&err_s, &err_z);
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(err_f, "curl_easy_init failed\n");
+        goto failed;
+    }
+
+    {
+        size_t url_z = 0;
+        FILE *url_f = open_memstream(&url_s, &url_z);
+        char *s1, *s2;
+        fprintf(url_f, "%sclient/list-runs-json?SID=%s&EJSID=%s&prob_id=%d&json=1&mode=1",
+                ejs->url,
+                (s1 = curl_easy_escape(curl, esv->session_id, 0)),
+                (s2 = curl_easy_escape(curl, esv->client_key, 0)),
+                prob_id);
+        free(s1);
+        free(s2);
+        fclose(url_f);
+    }
+
+    {
+        size_t resp_z = 0;
+        FILE *resp_f = open_memstream(&resp_s, &resp_z);
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_URL, url_s);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp_f);
+        res = curl_easy_perform(curl);
+        fclose(resp_f);
+    }
+    if (res != CURLE_OK) {
+        fprintf(err_f, "request failed: %s\n", curl_easy_strerror(res));
+        goto failed;
+    }
+
+    fprintf(stdout, ">%s<\n", resp_s);
+    root = cJSON_Parse(resp_s);
+    if (!root) {
+        fprintf(err_f, "json parse failed\n");
+        goto failed;
+    }
+    if (root->type != cJSON_Object) {
+        goto invalid_json;
+    }
+    cJSON *jok = cJSON_GetObjectItem(root, "ok");
+    if (!jok) {
+        goto invalid_json;
+    }
+
+    if (jok->type == cJSON_True) {
+        eprs->info_json_text = strdup(resp_s);
+        eprs->info_json_size = strlen(resp_s);
+
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+        /*
+        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        if (jj) {
+            if (jj->type != cJSON_Number || jj->valueint <= 0) goto invalid_json;
+            epi->server_time = jj->valueint;
+        }
+        */
+
+        cJSON *jruns = cJSON_GetObjectItem(jresult, "runs");
+        if (!jruns || jruns->type != cJSON_Array) goto invalid_json;
+
+        eprs->size = cJSON_GetArraySize(jruns);
+        if (eprs->size > 0) {
+            eprs->runs = calloc(eprs->size, sizeof(eprs->runs[0]));
+        }
+        for (int i = 0; i < eprs->size; ++i) {
+            struct EjProblemRun *epr = &eprs->runs[i];
+            cJSON *jrun = cJSON_GetArrayItem(jruns, i);
+            if (!jrun || jrun->type != cJSON_Object) goto invalid_json;
+
+            cJSON *jj = cJSON_GetObjectItem(jrun, "run_id");
+            if (!jj || jj->type != cJSON_Number) goto invalid_json;
+            epr->run_id = jj->valueint;
+
+            jj = cJSON_GetObjectItem(jrun, "prob_id");
+            if (!jj || jj->type != cJSON_Number) goto invalid_json;
+            epr->prob_id = jj->valueint;
+
+            jj = cJSON_GetObjectItem(jrun, "status");
+            if (!jj || jj->type != cJSON_Number) goto invalid_json;
+            epr->status = jj->valueint;
+
+            jj = cJSON_GetObjectItem(jrun, "score");
+            if (jj) {
+                if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
+                epr->score = jj->valueint;
+            } else {
+                epr->score = -1;
+            }
+
+            jj = cJSON_GetObjectItem(jrun, "run_time");
+            if (!jj || jj->type != cJSON_Number) goto invalid_json;
+            epr->run_time_us = jj->valueint * 1000000LL;
+        }
+        qsort(eprs->runs, eprs->size, sizeof(eprs->runs[0]), sort_runs_func);
+    } else if (jok->type == cJSON_False) {
+        fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
+        goto failed;
+    } else {
+        goto invalid_json;
+    }
+
+    // normal return
+    //contest_log_format(ejs, ecs, "list-runs-json", 1, NULL);
+    eprs->log_s = NULL;
+    eprs->recheck_time_us = current_time_us + 10000000; // +10s
+    eprs->ok = 1;
+
+cleanup:
+    if (root) {
+        cJSON_Delete(root);
+    }
+    free(resp_s);
+    free(url_s);
+    if (curl) {
+        curl_easy_cleanup(curl);
+    }
+    if (err_f) {
+        fclose(err_f);
+    }
+    free(err_s);
+    return;
+
+invalid_json:
+    fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
+
+failed:
+    if (err_f) {
+        fclose(err_f); err_f = NULL;
+    }
+    eprs->log_s = err_s; err_s = NULL;
+    eprs->recheck_time_us = current_time_us + 10000000; // 10s
+    contest_log_format(current_time_us, ecs, "list-runs-json", 0, NULL);
+    goto cleanup;
+}

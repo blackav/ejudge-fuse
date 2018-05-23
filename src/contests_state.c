@@ -868,3 +868,67 @@ problem_submits_get(struct EjProblemSubmits *epss, int lang_id)
     pthread_rwlock_unlock(&epss->rwl);
     return epcs;
 }
+
+struct EjProblemRuns *
+problem_runs_create(int prob_id)
+{
+    struct EjProblemRuns *eprs = calloc(1, sizeof(*eprs));
+    eprs->prob_id = prob_id;
+    return eprs;
+}
+
+void
+problem_runs_free(struct EjProblemRuns *eprs)
+{
+    if (eprs) {
+        free(eprs->log_s);
+        free(eprs->runs);
+        free(eprs->info_json_text);
+        free(eprs);
+    }
+}
+
+struct EjProblemRuns *
+problem_runs_read_lock(struct EjProblemState *eps)
+{
+    atomic_fetch_add_explicit(&eps->runs_guard, 1, memory_order_acquire);
+    struct EjProblemRuns *eprs = atomic_load_explicit(&eps->runs, memory_order_relaxed);
+    if (eprs) {
+        atomic_fetch_add_explicit(&eprs->reader_count, 1, memory_order_relaxed);
+    }
+    atomic_fetch_sub_explicit(&eps->runs_guard, 1, memory_order_release);
+    return eprs;
+}
+
+void
+problem_runs_read_unlock(struct EjProblemRuns *eprs)
+{
+    if (eprs) {
+        atomic_fetch_sub_explicit(&eprs->reader_count, 1, memory_order_relaxed);
+    }
+}
+
+int
+problem_runs_try_write_lock(struct EjProblemState *eps)
+{
+    return atomic_exchange_explicit(&eps->runs_update, 1, memory_order_acquire);
+}
+
+void
+problem_runs_set(struct EjProblemState *eps, struct EjProblemRuns *eprs)
+{
+    struct EjProblemRuns *old = atomic_exchange_explicit(&eps->runs, eprs, memory_order_acquire);
+    int expected = 0;
+    while (!atomic_compare_exchange_weak_explicit(&eps->runs_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+        expected = 0;
+    }
+    atomic_store_explicit(&eps->runs_update, 0, memory_order_release);
+    if (old) {
+        expected = 0;
+        while (!atomic_compare_exchange_weak_explicit(&old->reader_count, &expected, 0, memory_order_release, memory_order_acquire)) {
+            sched_yield();
+            expected = 0;
+        }
+        problem_runs_free(old);
+    }
+}
