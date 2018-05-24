@@ -136,13 +136,15 @@ ejf_readdir(
     }
 
     unsigned char cp_path[PATH_MAX];
-    snprintf(cp_path, sizeof(cp_path), "/%d/problems", efr->contest_id);
+    int res = snprintf(cp_path, sizeof(cp_path), "/%d/problems", efr->contest_id);
+    (void) res;
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, cp_path);
     filler(buf, ".", &es, 0);
     unsigned char p_path[PATH_MAX];
-    snprintf(p_path, sizeof(p_path), "/%d", efr->contest_id);
+    res = snprintf(p_path, sizeof(p_path), "/%d", efr->contest_id);
+    (void) res;
     es.st_ino = get_inode(efs, p_path);
     filler(buf, "..", &es, 0);
 
@@ -152,7 +154,8 @@ ejf_readdir(
             unsigned char dpath[PATH_MAX];
             unsigned char ipath[PATH_MAX];
 
-            snprintf(ipath, sizeof(ipath), "%s/%d", cp_path, prob_id);
+            int res = snprintf(ipath, sizeof(ipath), "%s/%d", cp_path, prob_id);
+            if (res >= sizeof(ipath)) { abort(); }
             if (ecp->short_name && ecp->long_name) {
                 snprintf(dpath, sizeof(dpath), "%s,%s", ecp->short_name, ecp->long_name);
             } else if (ecp->short_name) {

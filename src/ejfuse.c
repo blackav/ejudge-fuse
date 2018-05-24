@@ -331,9 +331,10 @@ contest_log_format(
     time_t tt = current_time_us / 1000000;
     struct tm ltm;
     localtime_r(&tt, &ltm);
-    snprintf(buf2, sizeof(buf2), "%04d-%02d-%02d %02d:%02d:%02d %s %s %s\n",
+    int res = snprintf(buf2, sizeof(buf2), "%04d-%02d-%02d %02d:%02d:%02d %s %s %s\n",
              ltm.tm_year + 1900, ltm.tm_mon + 1, ltm.tm_mday, ltm.tm_hour, ltm.tm_min, ltm.tm_sec,
              action, success?"ok":"fail", buf1);
+    if (res >= sizeof(buf2)) { abort(); }
     contest_log_append(ecs, buf2);
 }
 

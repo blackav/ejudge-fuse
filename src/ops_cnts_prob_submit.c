@@ -133,7 +133,8 @@ ejf_readdir(
     }
 
     unsigned char dot_path[PATH_MAX];
-    snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    int res = snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    (void) res;
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, dot_path);
@@ -152,7 +153,8 @@ ejf_readdir(
                 if (epi->compilers[lang_id] && lang_id < eci->compiler_size && (ecl = eci->compilers[lang_id])) {
                     unsigned char entry_path[PATH_MAX];
                     unsigned char entry_name[PATH_MAX];
-                    snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
+                    res = snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
+                    if (res >= sizeof(entry_path)) { abort(); }
                     es.st_ino = get_inode(efs, entry_path);
                     if (ecl->short_name && ecl->short_name[0] && ecl->long_name && ecl->long_name[0]) {
                         snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
@@ -170,7 +172,8 @@ ejf_readdir(
                 if (ecl) {
                     unsigned char entry_path[PATH_MAX];
                     unsigned char entry_name[PATH_MAX];
-                    snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
+                    res = snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, lang_id);
+                    if (res >= sizeof(entry_path)) { abort(); }
                     es.st_ino = get_inode(efs, entry_path);
                     if (ecl->short_name && ecl->short_name[0] && ecl->long_name && ecl->long_name[0]) {
                         snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);

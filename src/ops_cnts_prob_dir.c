@@ -148,22 +148,27 @@ ejf_readdir(
     filler(buf, "..", &es, 0);
 
     unsigned char entry_path[PATH_MAX];
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "INFO");
+    int res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "INFO");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "INFO", &es, 0);
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "info.json");
+    res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "info.json");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "info.json", &es, 0);
     if (epi->is_viewable && epi->is_statement_avaiable) {
-        snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "statement.html");
+        res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "statement.html");
+        if (res >= sizeof(entry_path)) { abort(); }
         es.st_ino = get_inode(efs, entry_path);
         filler(buf, "statement.html", &es, 0);
     }
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "runs");
+    res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "runs");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "runs", &es, 0);
     if (epi->is_submittable) {
-        snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "submit");
+        res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "submit");
+        if (res >= sizeof(entry_path)) { abort(); }
         es.st_ino = get_inode(efs, entry_path);
         filler(buf, "submit", &es, 0);
     }

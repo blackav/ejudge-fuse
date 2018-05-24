@@ -133,7 +133,8 @@ ejf_readdir(
     }
 
     unsigned char dot_path[PATH_MAX];
-    snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/runs", efr->contest_id, efr->prob_id);
+    int res = snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/runs", efr->contest_id, efr->prob_id);
+    (void) res;
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, dot_path);
@@ -156,7 +157,8 @@ ejf_readdir(
             snprintf(score_str, sizeof(score_str), ",%d", epr->score);
         }
         snprintf(entry_name, sizeof(entry_name), "%d,%s%s", epr->run_id, status_str, score_str);
-        snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, epr->run_id);
+        res = snprintf(entry_path, sizeof(entry_path), "%s/%d", dot_path, epr->run_id);
+        if (res >= sizeof(entry_path)) { abort(); }
         es.st_ino = get_inode(efs, entry_path);
         filler(buf, entry_name, &es, 0);
     }

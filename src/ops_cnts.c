@@ -144,16 +144,20 @@ ejf_readdir(
     filler(buf, "..", &es, 0);
 
     unsigned char entry_path[PATH_MAX];
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "INFO");
+    int res = snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "INFO");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "INFO", &es, 0);
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "info.json");
+    res = snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "info.json");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "info.json", &es, 0);
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "LOG");
+    res = snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "LOG");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "LOG", &es, 0);
-    snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "problems");
+    res = snprintf(entry_path, sizeof(entry_path), "%s/%s", contest_path, "problems");
+    if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "problems", &es, 0);
 
