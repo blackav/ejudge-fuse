@@ -25,9 +25,10 @@ struct EjContestSession;
 struct EjContestState;
 struct EjFuseState;
 struct EjProblemInfo;
-struct EjProblemStatement;
-struct EjSessionValue;
 struct EjProblemRuns;
+struct EjProblemStatement;
+struct EjRunInfo;
+struct EjSessionValue;
 struct EjTopSession;
 
 void
@@ -93,3 +94,11 @@ ejudge_client_problem_runs_request(
         int prob_id,
         long long current_time_us,
         struct EjProblemRuns *eprs); // output
+void
+ejudge_client_run_info_request(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int run_id,
+        long long current_time_us,
+        struct EjRunInfo *eri); // output

@@ -168,9 +168,11 @@ void contest_list_read_unlock(struct EjContestList *contests);
 
 struct EjContestListItem *contest_list_find(const struct EjContestList *contests, int cnts_id);
 
-struct EjFuseState;
 struct EjContestState;
+struct EjFuseState;
 struct EjProblemState;
+struct EjRunState;
+
 void
 contest_session_maybe_update(
         struct EjFuseState *efs,
@@ -198,6 +200,12 @@ problem_runs_maybe_update(
         struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjProblemState *eps,
+        long long current_time_us);
+void
+run_info_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunState *ers,
         long long current_time_us);
 
 // directory structure
