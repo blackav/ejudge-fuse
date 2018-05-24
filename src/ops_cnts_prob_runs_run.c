@@ -51,7 +51,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     stb->st_nlink = 2;
     stb->st_uid = efr->efs->owner_uid;
     stb->st_gid = efr->efs->owner_gid;
-    stb->st_size = 4096; // ???, but why not?
+    stb->st_size = EJFUSE_DIR_SIZE;
     long long run_time_us = epr->run_time_us;
     time_t run_time_s = run_time_us / 1000000;
     int run_time_ns = (run_time_us % 1000000) * 1000;

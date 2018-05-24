@@ -24,3 +24,6 @@ enum { EJFUSE_DIR_PERMS = 0500 };
 
 /* permissions for read-only files (r--------) */
 enum { EJFUSE_FILE_PERMS = 0400 };
+
+/* default directory size */
+enum { EJFUSE_DIR_SIZE = 4096 };

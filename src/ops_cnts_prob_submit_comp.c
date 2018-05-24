@@ -19,6 +19,7 @@
 
 #include "ops_cnts_prob_submit_comp.h"
 
+#include "settings.h"
 #include "ejfuse.h"
 #include "ops_generic.h"
 #include "contests_state.h"
@@ -61,7 +62,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     stb->st_nlink = 2;
     stb->st_uid = efs->owner_uid;
     stb->st_gid = efs->owner_gid;
-    stb->st_size = 4096; // ???, but why not?
+    stb->st_size = EJFUSE_DIR_SIZE;
     long long current_time_us = efr->current_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
