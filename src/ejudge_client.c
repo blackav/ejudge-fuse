@@ -19,6 +19,7 @@
 
 #include "ejudge_client.h"
 
+#include "settings.h"
 #include "contests_state.h"
 #include "ejfuse.h"
 #include "cJSON.h"
@@ -208,7 +209,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     tls->log_s = err_s; err_s = NULL;
-    tls->recheck_time_us = current_time_us + 10000000; // 10s
+    tls->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     goto cleanup;
 }
 
@@ -363,7 +364,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     contests->log_s = err_s; err_s = NULL;
-    contests->recheck_time_us = current_time_us + 10000000; // 10s
+    contests->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     goto cleanup;
 }
 
@@ -523,7 +524,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     ecc->log_s = err_s; err_s = NULL;
-    ecc->recheck_time_us = current_time_us + 10000000; // 10s
+    ecc->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     contest_log_format(current_time_us, ecs, "enter-contest-json", 1, NULL);
     goto cleanup;
 }
@@ -684,7 +685,7 @@ ejudge_client_contest_info_request(
     // normal return
     //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
     eci->log_s = NULL;
-    eci->recheck_time_us = current_time_us + 10000000; // +10s
+    eci->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     eci->ok = 1;
 
 cleanup:
@@ -708,7 +709,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     eci->log_s = err_s; err_s = NULL;
-    eci->recheck_time_us = current_time_us + 10000000; // 10s
+    eci->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     contest_log_format(current_time_us, ecs, "contest-status-json", 0, NULL);
     goto cleanup;
 }
@@ -1126,7 +1127,7 @@ ejudge_client_problem_info_request(
     // normal return
     //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
     epi->log_s = NULL;
-    epi->recheck_time_us = current_time_us + 10000000; // +10s
+    epi->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     epi->ok = 1;
 
 cleanup:
@@ -1152,7 +1153,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     epi->log_s = err_s; err_s = NULL;
-    epi->recheck_time_us = current_time_us + 10000000; // 10s
+    epi->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     contest_log_format(current_time_us, ecs, "contest-problem-json", 0, NULL);
     goto cleanup;
 }
@@ -1219,7 +1220,7 @@ ejudge_client_problem_statement_request(
     eph->stmt_size = strlen(eph->stmt_text);
 
     eph->log_s = NULL;
-    eph->recheck_time_us = current_time_us + 10000000; // +10s
+    eph->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     eph->ok = 1;
 
 cleanup:
@@ -1239,7 +1240,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     eph->log_s = err_s; err_s = NULL;
-    eph->recheck_time_us = current_time_us + 10000000; // 10s
+    eph->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     contest_log_format(current_time_us, ecs, "problem-statement-json", 0, NULL);
     goto cleanup;
 }
@@ -1530,7 +1531,7 @@ ejudge_client_problem_runs_request(
     // normal return
     //contest_log_format(efs, ecs, "list-runs-json", 1, NULL);
     eprs->log_s = NULL;
-    eprs->recheck_time_us = current_time_us + 10000000; // +10s
+    eprs->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     eprs->ok = 1;
 
 cleanup:
@@ -1556,7 +1557,7 @@ failed:
         fclose(err_f); err_f = NULL;
     }
     eprs->log_s = err_s; err_s = NULL;
-    eprs->recheck_time_us = current_time_us + 10000000; // 10s
+    eprs->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     contest_log_format(current_time_us, ecs, "list-runs-json", 0, NULL);
     goto cleanup;
 }
