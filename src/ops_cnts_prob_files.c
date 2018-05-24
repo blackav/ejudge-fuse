@@ -33,14 +33,25 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {
     struct EjFuseState *efs = efr->efs;
     off_t file_size = 0;
+    long long mtime_us = 0;
 
-    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO) || !strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
+    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO)) {
+        struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+        if (!epi || !epi->ok) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+        file_size = epi->info_size;
+        mtime_us = epi->update_time_us;
+        problem_info_read_unlock(epi);
+    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
             return -ENOENT;
         }
         file_size = epi->info_json_size;
+        mtime_us = epi->update_time_us;
         problem_info_read_unlock(epi);
     } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
         // try to not request statement.html from server
@@ -59,6 +70,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
         struct EjProblemStatement *eph = problem_statement_read_lock(efr->eps);
         if (eph && eph->ok) {
             file_size = eph->stmt_size;
+            mtime_us = eph->update_time_us;
         }
         problem_statement_read_unlock(eph);
     } else {
@@ -70,7 +82,6 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 
     memset(stb, 0, sizeof(*stb));
 
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems", efr->ecs->cnts_id);
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
     stb->st_nlink = 2;
@@ -78,10 +89,11 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     stb->st_gid = efs->owner_gid;
     stb->st_size = file_size;
     long long current_time_us = efr->current_time_us;
+    if (mtime_us <= 0) mtime_us = efs->start_time_us;
     stb->st_atim.tv_sec = current_time_us / 1000000;
     stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
-    stb->st_mtim.tv_sec = efs->start_time_us / 1000000;
-    stb->st_mtim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = mtime_us / 1000000;
+    stb->st_mtim.tv_nsec = (mtime_us % 1000000) * 1000;
     stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
     stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
 
@@ -177,7 +189,25 @@ static int
 ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
 {
     int retval = -EIO;
-    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO) || !strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
+    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO)) {
+        struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
+        if (!epi || !epi->ok) {
+            problem_info_read_unlock(epi);
+            return -EIO;
+        }
+        retval = 0;
+        size_t len = epi->info_size;
+        if (!size || offset < 0 || offset >= len) {
+            retval = 0;
+        } else {
+            if (len - offset < size) {
+                size = len - offset;
+            }
+            memcpy(buf, epi->info_text + offset, size);
+            retval = size;
+        }
+        problem_info_read_unlock(epi);
+    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);

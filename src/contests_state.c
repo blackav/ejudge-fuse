@@ -548,6 +548,7 @@ problem_info_free(struct EjProblemInfo *epi)
 {
     if (epi) {
         free(epi->info_json_text);
+        free(epi->info_text);
         free(epi->short_name);
         free(epi->long_name);
         free(epi->stand_name);

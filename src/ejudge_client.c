@@ -1124,9 +1124,31 @@ ejudge_client_problem_info_request(
         goto invalid_json;
     }
 
+    {
+        char *text_s = NULL;
+        size_t text_z = 0;
+        FILE *text_f = open_memstream(&text_s, &text_z);
+        time_t ltt;
+        struct tm ltm;
+
+        fprintf(text_f, "Problem information:\n");
+        fprintf(text_f, "Your statistics:\n");
+        fprintf(text_f, "Server information:\n");
+
+        ltt = epi->server_time;
+        localtime_r(&ltt, &ltm);
+        fprintf(text_f, "\tServer time:\t\t%04d-%02d-%02d %02d:%02d:%02d\n",
+                ltm.tm_year + 1900, ltm.tm_mon + 1, ltm.tm_mday, ltm.tm_hour, ltm.tm_min, ltm.tm_sec);
+
+        fclose(text_f);
+        epi->info_text = text_s;
+        epi->info_size = text_z;
+    }
+
     // normal return
     //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
     epi->log_s = NULL;
+    epi->update_time_us = current_time_us;
     epi->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     epi->ok = 1;
 
@@ -1174,6 +1196,7 @@ ejudge_client_problem_statement_request(
     char *url_s = NULL;
     char *resp_s = NULL;
     CURLcode res = 0;
+    char *stmt_s = NULL;
 
     err_f = open_memstream(&err_s, &err_z);
     curl = curl_easy_init();
@@ -1214,12 +1237,31 @@ ejudge_client_problem_statement_request(
 
     fprintf(stdout, ">%s<\n", resp_s);
 
+    {
+        size_t stmt_z = 0;
+        FILE *stmt_f = open_memstream(&stmt_s, &stmt_z);
+        fprintf(stmt_f,
+                "<html>\n"
+                "<head>\n"
+                "<meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\"/>\n"
+                "<title>Problem statement</title>\n"
+                "</head>\n"
+                "<body>\n"
+                "%s\n"
+                "</body>\n"
+                "</html>\n",
+                resp_s);
+        fclose(stmt_f);
+
+        eph->stmt_text = stmt_s; stmt_s = NULL;
+        eph->stmt_size = stmt_z;
+    }
+
     // normal return
     //contest_log_format(efs, ecs, "problem-statement-json", 1, NULL);
-    eph->stmt_text = resp_s; resp_s = NULL;
-    eph->stmt_size = strlen(eph->stmt_text);
 
     eph->log_s = NULL;
+    eph->update_time_us = current_time_us;
     eph->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     eph->ok = 1;
 

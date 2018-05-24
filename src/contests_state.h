@@ -93,8 +93,13 @@ struct EjProblemInfo
     long long recheck_time_us;
     unsigned char *log_s;
 
+    long long update_time_us;  // last update time (in case of success)
+
     unsigned char *info_json_text;
     size_t info_json_size;
+
+    unsigned char *info_text;
+    size_t info_size;
 
     time_t server_time;
     unsigned char *short_name;
@@ -197,6 +202,7 @@ struct EjProblemStatement
     _Bool ok;
     long long recheck_time_us;
     unsigned char *log_s;
+    long long update_time_us;  // last update time (in case of success)
 
     unsigned char *stmt_text;
     size_t stmt_size;
