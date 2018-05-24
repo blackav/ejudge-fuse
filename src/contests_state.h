@@ -259,10 +259,28 @@ struct EjProblemState
     struct EjProblemSubmits *submits;
 };
 
+struct EjRunInfo
+{
+    _Atomic int reader_count;
+
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+
+    unsigned char *info_json_text;
+    size_t info_json_size;
+
+    int run_id;
+};
+
 // run state is a container for updateable run structures
 struct EjRunState
 {
     int run_id;
+
+    _Atomic int info_guard;
+    struct EjRunInfo *info;
+    _Atomic _Bool info_update;
 };
 
 struct EjProblemStates;
@@ -372,3 +390,11 @@ void problem_runs_read_unlock(struct EjProblemRuns *eprs);
 int problem_runs_try_write_lock(struct EjProblemState *eps);
 void problem_runs_set(struct EjProblemState *eps, struct EjProblemRuns *eprs);
 struct EjProblemRun *problem_runs_find_unlocked(struct EjProblemRuns *eprs, int run_id);
+
+struct EjRunInfo *run_info_create(int run_id);
+void run_info_free(struct EjRunInfo *eri);
+
+struct EjRunInfo *run_info_read_lock(struct EjRunState *ers);
+void run_info_read_unlock(struct EjRunInfo *eri);
+int run_info_try_write_lock(struct EjRunState *ers);
+void run_info_set(struct EjRunState *ers, struct EjRunInfo *eri);

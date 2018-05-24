@@ -952,3 +952,66 @@ problem_runs_find_unlocked(struct EjProblemRuns *eprs, int run_id)
     }
     return NULL;
 }
+
+struct EjRunInfo *
+run_info_create(int run_id)
+{
+    struct EjRunInfo *eri = calloc(1, sizeof(*eri));
+    eri->run_id = run_id;
+    return eri;
+}
+
+void
+run_info_free(struct EjRunInfo *eri)
+{
+    if (eri) {
+        free(eri->log_s);
+        free(eri->info_json_text);
+        free(eri);
+    }
+}
+
+struct EjRunInfo *
+run_info_read_lock(struct EjRunState *ers)
+{
+    atomic_fetch_add_explicit(&ers->info_guard, 1, memory_order_acquire);
+    struct EjRunInfo *eri = atomic_load_explicit(&ers->info, memory_order_relaxed);
+    if (eri) {
+        atomic_fetch_add_explicit(&eri->reader_count, 1, memory_order_relaxed);
+    }
+    atomic_fetch_sub_explicit(&ers->info_guard, 1, memory_order_release);
+    return eri;
+}
+
+void
+run_info_read_unlock(struct EjRunInfo *eri)
+{
+    if (eri) {
+        atomic_fetch_sub_explicit(&eri->reader_count, 1, memory_order_relaxed);
+    }
+}
+
+int
+run_info_try_write_lock(struct EjRunState *ers)
+{
+    return atomic_exchange_explicit(&ers->info_update, 1, memory_order_acquire);
+}
+
+void
+run_info_set(struct EjRunState *ers, struct EjRunInfo *eri)
+{
+    struct EjRunInfo *old = atomic_exchange_explicit(&ers->info, eri, memory_order_acquire);
+    int expected = 0;
+    while (!atomic_compare_exchange_weak_explicit(&ers->info_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+        expected = 0;
+    }
+    atomic_store_explicit(&ers->info_update, 0, memory_order_release);
+    if (old) {
+        expected = 0;
+        while (!atomic_compare_exchange_weak_explicit(&old->reader_count, &expected, 0, memory_order_release, memory_order_acquire)) {
+            sched_yield();
+            expected = 0;
+        }
+        run_info_free(old);
+    }
+}
