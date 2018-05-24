@@ -540,6 +540,10 @@ problem_info_create(int prob_id)
     epi->acm_run_penalty = 20;
     epi->test_score = 1;
     epi->best_run = -1;
+    epi->full_score = -1;
+    epi->full_user_score = -1;
+    epi->min_score_1 = -1;
+    epi->min_score_2 = -1;
     return epi;
 }
 
@@ -556,7 +560,6 @@ problem_info_free(struct EjProblemInfo *epi)
         free(epi->group_name);
         free(epi->input_file);
         free(epi->output_file);
-        free(epi->ok_status);
         free(epi->compilers);
         free(epi->log_s);
         free(epi);

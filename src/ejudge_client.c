@@ -525,7 +525,7 @@ failed:
     }
     ecc->log_s = err_s; err_s = NULL;
     ecc->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
-    contest_log_format(current_time_us, ecs, "enter-contest-json", 1, NULL);
+    contest_log_format(current_time_us, ecs, "enter-contest-json", 0, NULL);
     goto cleanup;
 }
 
@@ -714,6 +714,21 @@ failed:
     goto cleanup;
 }
 
+static const unsigned char *
+size_to_string(unsigned char *buf, size_t size, unsigned long long value)
+{
+    if (!(value % (1024 * 1024 * 1024))) {
+        snprintf(buf, size, "%lluG", value / (1024 * 1024 * 1024));
+    } else if (!(value % (1024 * 1024))) {
+        snprintf(buf, size, "%lluM", value / (1024 * 1024));
+    } else if (!(value % 1024)) {
+        snprintf(buf, size, "%lluK", value / (1024 * 1024));
+    } else {
+        snprintf(buf, size, "%llu", value);
+    }
+    return buf;
+}
+
 /*
 {
   "ok" : true,
@@ -832,10 +847,10 @@ ejudge_client_problem_info_request(
             if (jj->type != cJSON_String) goto invalid_json;
             epi->long_name = strdup(jj->valuestring);
         }
-        // FIXME: parse type
-        /*
-  fprintf(fout, ",\n      \"type\": \"%s\"", json_armor_buf(&ab, problem_unparse_type(prob->type)));
-        */
+        if ((jj = cJSON_GetObjectItem(jp, "type"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            epi->type = jj->valueint;
+        }
         if ((jj = cJSON_GetObjectItem(jp, "full_score"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->full_score = jj->valueint;
@@ -927,6 +942,9 @@ ejudge_client_problem_info_request(
         if ((jj = cJSON_GetObjectItem(jp, "is_statement_avaiable"))) {
             epi->is_statement_avaiable = (jj->type == cJSON_True);
         }
+        if ((jj = cJSON_GetObjectItem(jp, "enable_max_stack_size"))) {
+            epi->enable_max_stack_size = (jj->type == cJSON_True);
+        }
         if ((jj = cJSON_GetObjectItem(jp, "real_time_limit_ms"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->real_time_limit_ms = jj->valueint;
@@ -992,8 +1010,8 @@ ejudge_client_problem_info_request(
             epi->output_file = strdup(jj->valuestring);
         }
         if ((jj = cJSON_GetObjectItem(jp, "ok_status"))) {
-            if (jj->type != cJSON_String) goto invalid_json;
-            epi->ok_status = strdup(jj->valuestring);
+            if (jj->type != cJSON_Number) goto invalid_json;
+            epi->ok_status = jj->valueint;
         }
         if ((jj = cJSON_GetObjectItem(jp, "start_date"))) {
             if (jj->type != cJSON_Number || jj->valueint <= 0) goto invalid_json;
@@ -1132,9 +1150,111 @@ ejudge_client_problem_info_request(
         struct tm ltm;
 
         fprintf(text_f, "Problem information:\n");
-        fprintf(text_f, "Your statistics:\n");
-        fprintf(text_f, "Server information:\n");
+        if (epi->short_name && epi->short_name[0]) {
+            fprintf(text_f, "\tShort name:\t\t%s\n", epi->short_name);
+        }
+        if (epi->long_name && epi->long_name[0]) {
+            fprintf(text_f, "\tLong name:\t\t%s\n", epi->long_name);
+        }
+        /*
+    int type;
+    int full_score;
+    int full_user_score;
+    int min_score_1;
+    int min_score_2;
+    unsigned char use_stdin;
+    unsigned char use_stdout;
+    unsigned char combined_stdin;
+    unsigned char combined_stdout;
+    unsigned char use_ac_not_ok;
+    unsigned char ignore_prev_ac;
+    unsigned char team_enable_rep_view;
+    unsigned char team_enable_ce_view;
+    unsigned char ignore_compile_errors;
+    unsigned char disable_user_submit;
+    unsigned char disable_tab;
+    unsigned char enable_submit_after_reject;
+    unsigned char enable_tokens;
+    unsigned char tokens_for_user_ac;
+    unsigned char disable_submit_after_ok;
+    unsigned char disable_auto_testing;
+    unsigned char disable_testing;
+    unsigned char enable_compilation;
+    unsigned char skip_testing;
+    unsigned char hidden;
+    unsigned char stand_hide_time;
+    unsigned char stand_ignore_score;
+    unsigned char stand_last_column;
+    unsigned char disable_stderr;
+    int real_time_limit_ms;
+    int time_limit_ms;
+    int acm_run_penalty;
+    int test_score;
+    int run_penalty;
+    int disqualified_penalty;
+    int compile_error_penalty;
+    int tests_to_accept;
+    int min_tests_to_accept;
+    int score_multiplier;
+    int max_user_run_count;
 
+    unsigned char *stand_name;
+    unsigned char *stand_column;
+    unsigned char *group_name;
+    unsigned char *input_file;
+    unsigned char *output_file;
+
+    time_t start_date;
+    time_t deadline;
+
+    int compiler_size;
+    unsigned char *compilers;
+         */
+        if ((long long) epi->max_vm_size > 0) {
+            unsigned char buf[128];
+            fprintf(text_f, "\tMax VM Size:\t\t%s\n", size_to_string(buf, sizeof(buf), epi->max_vm_size));
+        }
+        if ((long long) epi->max_stack_size > 0) {
+            unsigned char buf[128];
+            fprintf(text_f, "\tMax Stack Size:\t\t%s\n", size_to_string(buf, sizeof(buf), epi->max_stack_size));
+        } else if (epi->enable_max_stack_size > 0) {
+            unsigned char buf[128];
+            fprintf(text_f, "\tMax Stack Size:\t\t%s\n", size_to_string(buf, sizeof(buf), epi->max_vm_size));
+        }
+        
+        fprintf(text_f, "Your statistics:\n");
+        /*
+
+    unsigned char is_statement_avaiable;
+
+    unsigned char is_viewable;
+    unsigned char is_submittable;
+    unsigned char is_tabable;
+    unsigned char is_solved;
+    unsigned char is_accepted;
+    unsigned char is_pending;
+    unsigned char is_pending_review;
+    unsigned char is_transient;
+    unsigned char is_last_untokenized;
+    unsigned char is_marked;
+    unsigned char is_autook;
+    unsigned char is_rejected;
+    unsigned char is_eff_time_needed;
+
+    int best_run;
+    int attempts;
+    int disqualified;
+    int ce_attempts;
+    int best_score;
+    int prev_successes;
+    int all_attempts;
+    int eff_attempts;
+    int token_count;
+
+    time_t effective_time;
+         */
+
+        fprintf(text_f, "Server information:\n");
         ltt = epi->server_time;
         localtime_r(&ltt, &ltm);
         fprintf(text_f, "\tServer time:\t\t%04d-%02d-%02d %02d:%02d:%02d\n",
@@ -1146,7 +1266,7 @@ ejudge_client_problem_info_request(
     }
 
     // normal return
-    //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
+    //contest_log_format(efs, ecs, "problem-status-json", 1, NULL);
     epi->log_s = NULL;
     epi->update_time_us = current_time_us;
     epi->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
@@ -1176,7 +1296,7 @@ failed:
     }
     epi->log_s = err_s; err_s = NULL;
     epi->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
-    contest_log_format(current_time_us, ecs, "contest-problem-json", 0, NULL);
+    contest_log_format(current_time_us, ecs, "problem-status-json", 0, NULL);
     goto cleanup;
 }
 
@@ -1613,4 +1733,106 @@ ejudge_client_run_info_request(
         long long current_time_us,
         struct EjRunInfo *eri) // output
 {
+    char *err_s = NULL;
+    size_t err_z = 0;
+    FILE *err_f = NULL;
+    CURL *curl = NULL;
+    char *url_s = NULL;
+    char *resp_s = NULL;
+    CURLcode res = 0;
+    cJSON *root = NULL;
+
+    err_f = open_memstream(&err_s, &err_z);
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(err_f, "curl_easy_init failed\n");
+        goto failed;
+    }
+
+    {
+        size_t url_z = 0;
+        FILE *url_f = open_memstream(&url_s, &url_z);
+        char *s1, *s2;
+        fprintf(url_f, "%sclient/run-status-json?SID=%s&EJSID=%s&run_id=%d&json=1&mode=1",
+                efs->url,
+                (s1 = curl_easy_escape(curl, esv->session_id, 0)),
+                (s2 = curl_easy_escape(curl, esv->client_key, 0)),
+                run_id);
+        free(s1);
+        free(s2);
+        fclose(url_f);
+    }
+
+    {
+        size_t resp_z = 0;
+        FILE *resp_f = open_memstream(&resp_s, &resp_z);
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_URL, url_s);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp_f);
+        res = curl_easy_perform(curl);
+        fclose(resp_f);
+    }
+    if (res != CURLE_OK) {
+        fprintf(err_f, "request failed: %s\n", curl_easy_strerror(res));
+        goto failed;
+    }
+
+    fprintf(stdout, ">%s<\n", resp_s);
+    root = cJSON_Parse(resp_s);
+    if (!root) {
+        fprintf(err_f, "json parse failed\n");
+        goto failed;
+    }
+    if (root->type != cJSON_Object) {
+        goto invalid_json;
+    }
+    cJSON *jok = cJSON_GetObjectItem(root, "ok");
+    if (!jok) {
+        goto invalid_json;
+    }
+
+    if (jok->type == cJSON_True) {
+        // TODO
+    } else if (jok->type == cJSON_False) {
+        fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
+        goto failed;
+    } else {
+        goto invalid_json;
+    }
+
+    // normal return
+    //contest_log_format(efs, ecs, "run-status-json", 1, NULL);
+    eri->log_s = NULL;
+    eri->update_time_us = current_time_us;
+    eri->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
+    eri->ok = 1;
+
+cleanup:
+    if (root) {
+        cJSON_Delete(root);
+    }
+    free(resp_s);
+    free(url_s);
+    if (curl) {
+        curl_easy_cleanup(curl);
+    }
+    if (err_f) {
+        fclose(err_f);
+    }
+    free(err_s);
+    return;
+
+invalid_json:
+    fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
+
+failed:
+    if (err_f) {
+        fclose(err_f); err_f = NULL;
+    }
+    eri->log_s = err_s; err_s = NULL;
+    eri->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
+    contest_log_format(current_time_us, ecs, "run-status-json", 0, NULL);
+    goto cleanup;
 }

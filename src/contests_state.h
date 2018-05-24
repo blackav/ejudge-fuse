@@ -104,7 +104,7 @@ struct EjProblemInfo
     time_t server_time;
     unsigned char *short_name;
     unsigned char *long_name;
-    int prob_type;
+    int type;
     int full_score;
     int full_user_score;
     int min_score_1;
@@ -133,6 +133,7 @@ struct EjProblemInfo
     unsigned char stand_ignore_score;
     unsigned char stand_last_column;
     unsigned char disable_stderr;
+    unsigned char enable_max_stack_size;
 
     int real_time_limit_ms;
     int time_limit_ms;
@@ -145,13 +146,13 @@ struct EjProblemInfo
     int min_tests_to_accept;
     int score_multiplier;
     int max_user_run_count;
+    int ok_status;
 
     unsigned char *stand_name;
     unsigned char *stand_column;
     unsigned char *group_name;
     unsigned char *input_file;
     unsigned char *output_file;
-    unsigned char *ok_status;
 
     time_t start_date;
 
@@ -272,6 +273,7 @@ struct EjRunInfo
     _Bool ok;
     long long recheck_time_us;
     unsigned char *log_s;
+    long long update_time_us;
 
     unsigned char *info_json_text;
     size_t info_json_size;
