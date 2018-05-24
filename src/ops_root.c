@@ -19,6 +19,7 @@
 
 #include "ops_root.h"
 
+#include "settings.h"
 #include "ejfuse.h"
 #include "ops_generic.h"
 

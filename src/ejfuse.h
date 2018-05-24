@@ -24,9 +24,6 @@
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
 
-enum { EJFUSE_DIR_PERMS = 0500 };
-enum { EJFUSE_FILE_PERMS = 0400 };
-
 struct EjTopSession
 {
     _Atomic int reader_count;   // readers count for RCU

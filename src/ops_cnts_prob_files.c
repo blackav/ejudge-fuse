@@ -19,6 +19,7 @@
 
 #include "ops_cnts_prob_files.h"
 
+#include "settings.h"
 #include "ejfuse.h"
 #include "ops_generic.h"
 #include "contests_state.h"

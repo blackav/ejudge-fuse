@@ -38,6 +38,7 @@ HFILES = \
  ops_fuse.h\
  ops_generic.h\
  ops_root.h\
+ settings.h\
  submit_thread.h
 
 CFILES = \

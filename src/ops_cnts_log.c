@@ -18,6 +18,8 @@
  */
 
 #include "ops_cnts_log.h"
+
+#include "settings.h"
 #include "ejfuse.h"
 #include "contests_state.h"
 #include "ops_generic.h"
