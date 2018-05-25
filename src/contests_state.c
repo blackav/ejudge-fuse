@@ -273,8 +273,12 @@ contest_state_copy_session(struct EjContestState *ecs, struct EjSessionValue *es
         return 0;
     }
     esv->ok = 1;
-    snprintf(esv->session_id, sizeof(esv->session_id), "%s", ecc->session_id);
-    snprintf(esv->client_key, sizeof(esv->client_key), "%s", ecc->client_key);
+    if (snprintf(esv->session_id, sizeof(esv->session_id), "%s", ecc->session_id) >= sizeof(esv->session_id)) {
+        abort();
+    }
+    if (snprintf(esv->client_key, sizeof(esv->client_key), "%s", ecc->client_key) >= sizeof(esv->client_key)) {
+        abort();
+    }
     contest_session_read_unlock(ecc);
     return 1;
 }

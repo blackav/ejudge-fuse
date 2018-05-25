@@ -78,7 +78,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     }
 
     unsigned char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/%s", efr->contest_id, efr->prob_id, efr->file_name);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/%s", efr->contest_id, efr->prob_id, efr->file_name) >= sizeof(fullpath)) {
+        abort();
+    }
 
     memset(stb, 0, sizeof(*stb));
 

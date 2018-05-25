@@ -42,7 +42,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     }
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
@@ -134,14 +136,15 @@ ejf_readdir(
 
     unsigned char dot_path[PATH_MAX];
     int res = snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
-    (void) res;
+    if (res >= sizeof(dot_path)) { abort(); }
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, dot_path);
     filler(buf, ".", &es, 0);
 
     unsigned char ddot_path[PATH_MAX];
-    snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    res = snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    if (res >= sizeof(ddot_path)) { abort(); }
     es.st_ino = get_inode(efs, ddot_path);
     filler(buf, "..", &es, 0);
 
@@ -157,12 +160,13 @@ ejf_readdir(
                     if (res >= sizeof(entry_path)) { abort(); }
                     es.st_ino = get_inode(efs, entry_path);
                     if (ecl->short_name && ecl->short_name[0] && ecl->long_name && ecl->long_name[0]) {
-                        snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
+                        res = snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
                     } else if (ecl->short_name && ecl->short_name[0]) {
-                        snprintf(entry_name, sizeof(entry_name), "%s", ecl->short_name);
+                        res = snprintf(entry_name, sizeof(entry_name), "%s", ecl->short_name);
                     } else {
-                        snprintf(entry_name, sizeof(entry_name), "%d", lang_id);
+                        res = snprintf(entry_name, sizeof(entry_name), "%d", lang_id);
                     }
+                    if (res >= sizeof(entry_name)) { abort(); }
                     filler(buf, entry_name, &es, 0);
                 }
             }
@@ -176,12 +180,13 @@ ejf_readdir(
                     if (res >= sizeof(entry_path)) { abort(); }
                     es.st_ino = get_inode(efs, entry_path);
                     if (ecl->short_name && ecl->short_name[0] && ecl->long_name && ecl->long_name[0]) {
-                        snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
+                        res = snprintf(entry_name, sizeof(entry_name), "%s,%s", ecl->short_name, ecl->long_name);
                     } else if (ecl->short_name && ecl->short_name[0]) {
-                        snprintf(entry_name, sizeof(entry_name), "%s", ecl->short_name);
+                        res = snprintf(entry_name, sizeof(entry_name), "%s", ecl->short_name);
                     } else {
-                        snprintf(entry_name, sizeof(entry_name), "%d", lang_id);
+                        res = snprintf(entry_name, sizeof(entry_name), "%d", lang_id);
                     }
+                    if (res >= sizeof(entry_name)) { abort(); }
                     filler(buf, entry_name, &es, 0);
                 }
             }

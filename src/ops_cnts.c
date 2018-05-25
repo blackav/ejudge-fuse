@@ -41,7 +41,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     struct EjContestListItem *fcntx = contest_list_find(contests, efr->contest_id);
     if (!fcntx) goto done;
 
-    snprintf(fullpath, sizeof(fullpath), "/%d", fcntx->id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d", fcntx->id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
@@ -135,7 +137,9 @@ ejf_readdir(
     }
 
     unsigned char contest_path[PATH_MAX];
-    snprintf(contest_path, sizeof(contest_path), "/%d", efr->contest_id);
+    if (snprintf(contest_path, sizeof(contest_path), "/%d", efr->contest_id) >= sizeof(contest_path)) {
+        abort();
+    }
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, contest_path);

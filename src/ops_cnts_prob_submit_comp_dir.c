@@ -101,7 +101,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     pthread_mutex_lock(&efn->m);
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/fnode/%d", dn.fnode);
+    if (snprintf(fullpath, sizeof(fullpath), "/fnode/%d", dn.fnode) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | (efn->mode & 07777);
     stb->st_nlink = efn->nlink;
@@ -132,7 +134,9 @@ ejf_fgetattr(struct EjFuseRequest *efr, const char *path, struct stat *stb, stru
     pthread_mutex_lock(&efn->m);
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/fnode/%d", (int) ffi->fh);
+    if (snprintf(fullpath, sizeof(fullpath), "/fnode/%d", (int) ffi->fh) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | (efn->mode & 07777);
     stb->st_nlink = efn->nlink;

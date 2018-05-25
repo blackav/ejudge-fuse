@@ -46,7 +46,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     contest_info_read_unlock(eci);
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/%s", efr->contest_id, efr->file_name);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/%s", efr->contest_id, efr->file_name) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
     stb->st_size = size;

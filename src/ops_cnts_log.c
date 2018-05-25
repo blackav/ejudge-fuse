@@ -40,7 +40,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     unsigned char fullpath[PATH_MAX];
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/LOG", efr->contest_id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/LOG", efr->contest_id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
     stb->st_nlink = 1;

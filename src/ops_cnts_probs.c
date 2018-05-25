@@ -44,7 +44,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 
     memset(stb, 0, sizeof(*stb));
 
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems", efr->ecs->cnts_id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems", efr->ecs->cnts_id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
@@ -137,14 +139,14 @@ ejf_readdir(
 
     unsigned char cp_path[PATH_MAX];
     int res = snprintf(cp_path, sizeof(cp_path), "/%d/problems", efr->contest_id);
-    (void) res;
+    if (res >= sizeof(cp_path)) { abort(); }
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, cp_path);
     filler(buf, ".", &es, 0);
     unsigned char p_path[PATH_MAX];
     res = snprintf(p_path, sizeof(p_path), "/%d", efr->contest_id);
-    (void) res;
+    if (res >= sizeof(p_path)) { abort(); }
     es.st_ino = get_inode(efs, p_path);
     filler(buf, "..", &es, 0);
 
@@ -157,12 +159,13 @@ ejf_readdir(
             int res = snprintf(ipath, sizeof(ipath), "%s/%d", cp_path, prob_id);
             if (res >= sizeof(ipath)) { abort(); }
             if (ecp->short_name && ecp->long_name) {
-                snprintf(dpath, sizeof(dpath), "%s,%s", ecp->short_name, ecp->long_name);
+                res = snprintf(dpath, sizeof(dpath), "%s,%s", ecp->short_name, ecp->long_name);
             } else if (ecp->short_name) {
-                snprintf(dpath, sizeof(dpath), "%s", ecp->short_name);
+                res = snprintf(dpath, sizeof(dpath), "%s", ecp->short_name);
             } else {
-                snprintf(dpath, sizeof(dpath), "%d", prob_id);
+                res = snprintf(dpath, sizeof(dpath), "%d", prob_id);
             }
+            if (res >= sizeof(dpath)) { abort(); }
             es.st_ino = get_inode(efs, ipath);
             filler(buf, dpath, &es, 0);
         }

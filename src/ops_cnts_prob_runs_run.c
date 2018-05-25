@@ -45,7 +45,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     }
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/runs/%d", efr->contest_id, efr->prob_id, efr->run_id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/runs/%d", efr->contest_id, efr->prob_id, efr->run_id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efr->efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;

@@ -70,7 +70,9 @@ run_status_str(
     assert(len > 0);
 
     if (status < 0 || status >= sizeof(run_statuses) / sizeof(run_statuses[0])) {
-        snprintf(zbuf, sizeof(zbuf), "Unknown: %d", status);
+        if (snprintf(zbuf, sizeof(zbuf), "Unknown: %d", status) >= sizeof(zbuf)) {
+            abort();
+        }
         s = zbuf;
     } else {
         s = run_statuses[status];
@@ -88,12 +90,16 @@ run_status_str(
                     s = "Partial solution";
                 }
             } else {
-                snprintf(zbuf, sizeof(zbuf), "Unknown: %d", status);
+                if (snprintf(zbuf, sizeof(zbuf), "Unknown: %d", status) >= sizeof(zbuf)) {
+                    abort();
+                }
                 s = zbuf;
             }
         }
     }
-    snprintf(out, len, "%s", s);
+    if (snprintf(out, len, "%s", s) >= len) {
+        abort();
+    }
     return out;
 }
 

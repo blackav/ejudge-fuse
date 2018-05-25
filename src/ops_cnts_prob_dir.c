@@ -42,7 +42,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     }
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d", efr->contest_id, efr->prob_id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     stb->st_mode = S_IFDIR | EJFUSE_DIR_PERMS;
     stb->st_nlink = 2;
@@ -136,19 +138,21 @@ ejf_readdir(
     }
 
     unsigned char p_path[PATH_MAX];
-    snprintf(p_path, sizeof(p_path), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    int res = snprintf(p_path, sizeof(p_path), "/%d/problems/%d", efr->contest_id, efr->prob_id);
+    if (res >= sizeof(p_path)) { abort(); }
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, p_path);
     filler(buf, ".", &es, 0);
 
     unsigned char up_path[PATH_MAX];
-    snprintf(up_path, sizeof(up_path), "/%d/problems", efr->contest_id);
+    res = snprintf(up_path, sizeof(up_path), "/%d/problems", efr->contest_id);
+    if (res >= sizeof(up_path)) { abort(); }
     es.st_ino = get_inode(efs, up_path);
     filler(buf, "..", &es, 0);
 
     unsigned char entry_path[PATH_MAX];
-    int res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "INFO");
+    res = snprintf(entry_path, sizeof(entry_path), "%s/%s", p_path, "INFO");
     if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efs, entry_path);
     filler(buf, "INFO", &es, 0);

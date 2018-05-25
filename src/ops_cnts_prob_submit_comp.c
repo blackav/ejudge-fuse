@@ -54,7 +54,9 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     }
 
     memset(stb, 0, sizeof(*stb));
-    snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id) >= sizeof(fullpath)) {
+        abort();
+    }
     stb->st_ino = get_inode(efs, fullpath);
     // non-standard permissions: -wx------
     //stb->st_mode = S_IFDIR | 0300;
@@ -171,14 +173,16 @@ ejf_readdir(
     problem_info_read_unlock(epi);
 
     unsigned char dot_path[PATH_MAX];
-    snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
+    int res = snprintf(dot_path, sizeof(dot_path), "/%d/problems/%d/submit/%d", efr->contest_id, efr->prob_id, efr->lang_id);
+    if (res >= sizeof(dot_path)) { abort(); }
     struct stat es;
     memset(&es, 0, sizeof(es));
     es.st_ino = get_inode(efs, dot_path);
     filler(buf, ".", &es, 0);
 
     unsigned char ddot_path[PATH_MAX];
-    snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    res = snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d/submit", efr->contest_id, efr->prob_id);
+    if (res >= sizeof(ddot_path)) { abort(); }
     es.st_ino = get_inode(efs, ddot_path);
     filler(buf, "..", &es, 0);
 
@@ -189,7 +193,8 @@ ejf_readdir(
         struct EjDirectoryNode dn;
         unsigned char path[PATH_MAX];
         dir_nodes_read(epcs->dir_nodes, i, &dn);
-        snprintf(path, sizeof(path), "/fnode/%d", dn.fnode);
+        res = snprintf(path, sizeof(path), "/fnode/%d", dn.fnode);
+        if (res >= sizeof(path)) { abort(); }
         es.st_ino = get_inode(efs, path);
         filler(buf, dn.name, &es, 0);
     }

@@ -276,8 +276,12 @@ top_session_copy_session(struct EjFuseState *efs, struct EjSessionValue *esv)
         return 0;
     }
     esv->ok = 1;
-    snprintf(esv->session_id, sizeof(esv->session_id), "%s", ets->session_id);
-    snprintf(esv->client_key, sizeof(esv->client_key), "%s", ets->client_key);
+    if (snprintf(esv->session_id, sizeof(esv->session_id), "%s", ets->session_id) >= sizeof(esv->session_id)) {
+        abort();
+    }
+    if (snprintf(esv->client_key, sizeof(esv->client_key), "%s", ets->client_key) >= sizeof(esv->client_key)) {
+        abort();
+    }
     top_session_read_unlock(ets);
     return 1;
 }
@@ -324,7 +328,9 @@ contest_log_format(
     buf1[0] = 0;
     if (format) {
         va_start(args, format);
-        vsnprintf(buf1, sizeof(buf1), format, args);
+        if (vsnprintf(buf1, sizeof(buf1), format, args) >= sizeof(buf1)) {
+            abort();
+        }
         va_end(args);
     }
 

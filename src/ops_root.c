@@ -103,10 +103,12 @@ ejf_readdir(
     filler(buf, "..", &es, 0);
     for (int i = 0; i < contests->count; ++i) {
         memset(&es, 0, sizeof(es));
-        snprintf(name_path, sizeof(name_path), "/%d", contests->entries[i].id);
+        int res = snprintf(name_path, sizeof(name_path), "/%d", contests->entries[i].id);
+        if (res >= sizeof(name_path)) { abort(); }
         es.st_ino = get_inode(efs, name_path);
-        snprintf(name_buf, sizeof(name_buf), "%d,%s", contests->entries[i].id, contests->entries[i].name);
-        // FIXME: truncate UTF-8 correctly
+        res = snprintf(name_buf, sizeof(name_buf), "%d,%s", contests->entries[i].id, contests->entries[i].name);
+        if (res >= sizeof(name_buf)) { abort(); }
+        // FIXME: truncate UTF-8 correctly, oh, shit, we abort()!
         filler(buf, name_buf, &es, 0);
     }
     contest_list_read_unlock(contests);
