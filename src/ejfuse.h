@@ -51,6 +51,8 @@ struct EjContestList
     long long      recheck_time_us;
     unsigned char *log_s;
 
+    long long update_time_us;  // last update time (in case of success)
+
     int count;
     struct EjContestListItem *entries;
 };

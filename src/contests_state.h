@@ -66,6 +66,8 @@ struct EjContestInfo
     long long      recheck_time_us;
     unsigned char *log_s;
 
+    long long update_time_us;  // last update time (in case of success)
+
     unsigned char *info_json_text;
     size_t info_json_size;
 
@@ -238,6 +240,7 @@ struct EjProblemRuns
     _Bool ok;
     long long recheck_time_us;
     unsigned char *log_s;
+    long long update_time_us;  // last update time (in case of success)
 
     unsigned char *info_json_text;
     size_t info_json_size;

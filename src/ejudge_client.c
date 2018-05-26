@@ -206,6 +206,7 @@ ejudge_client_get_contest_list_request(
 
     // normal return
     contests->log_s = NULL;
+    contests->update_time_us = current_time_us;
     contests->recheck_time_us = 0;
     contests->ok = 1;
 
@@ -399,6 +400,7 @@ ejudge_client_contest_info_request(
     // normal return
     //contest_log_format(efs, ecs, "contest-status-json", 1, NULL);
     eci->log_s = NULL;
+    eci->update_time_us = current_time_us;
     eci->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     eci->ok = 1;
 
@@ -815,6 +817,7 @@ ejudge_client_problem_runs_request(
     // normal return
     //contest_log_format(efs, ecs, "list-runs-json", 1, NULL);
     eprs->log_s = NULL;
+    eprs->update_time_us = current_time_us;
     eprs->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
     eprs->ok = 1;
 
