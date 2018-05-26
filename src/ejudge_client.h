@@ -19,6 +19,8 @@
  * along with Ejudge-fuse.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
+
 struct EjContestInfo;
 struct EjContestList;
 struct EjContestSession;
@@ -102,3 +104,44 @@ ejudge_client_run_info_request(
         int run_id,
         long long current_time_us,
         struct EjRunInfo *eri); // output
+
+int
+ejudge_json_parse_top_session(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjTopSession *ets); // out
+int
+ejudge_json_parse_contest_list(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjContestList *ecl); // out
+int
+ejudge_json_parse_contest_session(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjContestSession *ecc); // out
+int
+ejudge_json_parse_contest_info(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjContestInfo *eci); // out
+int
+ejudge_json_parse_problem_info(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjProblemInfo *epi); // out
+int
+ejudge_json_parse_submit_run_reply(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        int *p_run_id);
+int
+ejudge_json_parse_problem_runs(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjProblemRuns *eprs);
+int
+ejudge_json_parse_run_info(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjRunInfo *epi); // out

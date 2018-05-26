@@ -48,6 +48,7 @@ CFILES = \
  ejfuse_file.c\
  ejudge.c\
  ejudge_client.c\
+ ejudge_json.c\
  inode_hash.c\
  ops_cnts.c\
  ops_cnts_info.c\
