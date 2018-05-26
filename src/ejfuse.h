@@ -209,3 +209,7 @@ run_info_maybe_update(
 #define FN_CONTEST_PROBLEM_INFO           "INFO"
 #define FN_CONTEST_PROBLEM_INFO_JSON      "info.json"
 #define FN_CONTEST_PROBLEM_STATEMENT_HTML "statement.html"
+
+struct EjProblemInfo;
+void
+ejfuse_problem_info_text(struct EjProblemInfo *epi);
