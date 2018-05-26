@@ -405,6 +405,7 @@ ejudge_client_contest_info(
 
     struct EjContestInfo *eci = contest_info_create(ecs->cnts_id);
     ejudge_client_contest_info_request(efs, ecs, &esv, current_time_us, eci);
+    ejfuse_contest_info_text(eci);
     contest_info_set(ecs, eci);
 }
 

@@ -36,6 +36,11 @@ size_to_string(unsigned char *buf, size_t size, unsigned long long value)
 }
 
 void
+ejfuse_contest_info_text(struct EjContestInfo *eci)
+{
+}
+
+void
 ejfuse_problem_info_text(struct EjProblemInfo *epi)
 {
     char *text_s = NULL;
