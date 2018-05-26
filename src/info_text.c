@@ -164,3 +164,8 @@ ejfuse_problem_info_text(struct EjProblemInfo *epi)
     epi->info_text = text_s;
     epi->info_size = text_z;
 }
+
+void
+ejfuse_run_info_text(struct EjRunInfo *eri)
+{
+}

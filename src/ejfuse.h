@@ -214,5 +214,7 @@ run_info_maybe_update(
 
 struct EjContestInfo;
 struct EjProblemInfo;
+struct EjRunInfo;
 void ejfuse_contest_info_text(struct EjContestInfo *eci);
 void ejfuse_problem_info_text(struct EjProblemInfo *epi);
+void ejfuse_run_info_text(struct EjRunInfo *eri);
