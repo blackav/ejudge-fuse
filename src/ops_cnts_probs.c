@@ -167,7 +167,7 @@ ejf_readdir(
             }
             if (res >= sizeof(dpath)) { abort(); }
             es.st_ino = get_inode(efs, ipath);
-            filler(buf, dpath, &es, 0);
+            filler(buf, fix_name(dpath), &es, 0);
         }
     }
 

@@ -109,7 +109,7 @@ ejf_readdir(
         res = snprintf(name_buf, sizeof(name_buf), "%d,%s", contests->entries[i].id, contests->entries[i].name);
         if (res >= sizeof(name_buf)) { abort(); }
         // FIXME: truncate UTF-8 correctly, oh, shit, we abort()!
-        filler(buf, name_buf, &es, 0);
+        filler(buf, fix_name(name_buf), &es, 0);
     }
     contest_list_read_unlock(contests);
     return 0;

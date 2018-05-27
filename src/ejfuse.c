@@ -588,6 +588,17 @@ get_inode(struct EjFuseState *efs, const char *path)
     return inode_hash_insert(efs->inode_hash, digest)->inode;
 }
 
+unsigned char *
+fix_name(unsigned char *str)
+{
+    for (unsigned char *p = str; *p; ++p) {
+        if (*p < ' ' || *p == 0x7f || *p == '/') {
+            *p = '_';
+        }
+    }
+    return str;
+}
+
 static int
 find_problem(struct EjFuseRequest *efr, const unsigned char *name_or_id)
 {
