@@ -18,6 +18,7 @@
 
 HFILES = \
  ejfuse.h\
+ base64.h\
  cJSON.h\
  contests_state.h\
  ejfuse_file.h\
@@ -44,6 +45,7 @@ HFILES = \
 
 CFILES = \
  ejfuse.c\
+ base64.c\
  cJSON.c\
  contests_state.c\
  ejfuse_file.c\
