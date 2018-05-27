@@ -137,6 +137,8 @@ contest_info_free(struct EjContestInfo *eci)
             contest_language_free(eci->compilers[i]);
         }
         free(eci->compilers);
+        free(eci->info_json_text);
+        free(eci->info_text);
         free(eci);
     }
 }
@@ -975,6 +977,7 @@ run_info_free(struct EjRunInfo *eri)
     if (eri) {
         free(eri->log_s);
         free(eri->info_json_text);
+        free(eri->info_text);
         free(eri);
     }
 }

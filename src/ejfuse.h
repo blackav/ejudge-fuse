@@ -103,6 +103,7 @@ struct EjFuseRequest
     int contest_id;
     struct EjContestState *ecs;
     const unsigned char *file_name;
+    int file_name_code;
     int prob_id;
     struct EjProblemState *eps;
     int lang_id;
@@ -206,6 +207,14 @@ run_info_maybe_update(
         struct EjContestState *ecs,
         struct EjRunState *ers,
         long long current_time_us);
+
+/* special file names */
+enum
+{
+    FILE_NAME_INFO = 1,
+    FILE_NAME_INFO_JSON = 2,
+    FILE_NAME_STATEMENT_HTML = 3
+};
 
 // directory structure
 #define FN_CONTEST_PROBLEM_INFO           "INFO"

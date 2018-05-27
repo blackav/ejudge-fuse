@@ -639,6 +639,22 @@ find_compiler(struct EjFuseRequest *efr, const unsigned char *name_or_id)
     return val;
 }
 
+static int
+recognize_special_file_names(const unsigned char *file_name)
+{
+    if (!file_name) return 0;
+    if (!strcmp(file_name, "INFO")) {
+        return FILE_NAME_INFO;
+    }
+    if (!strcmp(file_name, "info.json")) {
+        return FILE_NAME_INFO_JSON;
+    }
+    if (!strcmp(file_name, "statement.html")) {
+        return FILE_NAME_STATEMENT_HTML;
+    }
+    return 0;
+}
+
 /*
  * /<CNTS>/problems/<PROB>/runs/...
  *                             ^ path
@@ -819,7 +835,8 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
     }
     const char *p2 = strchr(p1 + 1, '/');
     if (!p2) {
-        if (!strcmp(p1 + 1, "INFO") || !strcmp(p1 + 1, "info.json")) {
+        efr->file_name_code = recognize_special_file_names(p1 + 1);
+        if (efr->file_name_code == FILE_NAME_INFO || efr->file_name_code == FILE_NAME_INFO_JSON) {
             efr->file_name = p1 + 1;
             contest_session_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
             contest_info_maybe_update(efr->efs, efr->ecs, efr->current_time_us);

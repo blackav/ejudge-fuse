@@ -71,6 +71,9 @@ struct EjContestInfo
     unsigned char *info_json_text;
     size_t info_json_size;
 
+    unsigned char *info_text;
+    size_t info_size;
+
     int prob_size;
     struct EjContestProblem **probs;
 
@@ -280,6 +283,9 @@ struct EjRunInfo
 
     unsigned char *info_json_text;
     size_t info_json_size;
+
+    unsigned char *info_text;
+    size_t info_size;
 
     int run_id;
 };

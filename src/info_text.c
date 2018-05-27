@@ -38,6 +38,13 @@ size_to_string(unsigned char *buf, size_t size, unsigned long long value)
 void
 ejfuse_contest_info_text(struct EjContestInfo *eci)
 {
+    char *text_s = NULL;
+    size_t text_z = 0;
+    FILE *text_f = open_memstream(&text_s, &text_z);
+
+    fclose(text_f);
+    eci->info_text = text_s;
+    eci->info_size = text_z;
 }
 
 void
@@ -168,4 +175,11 @@ ejfuse_problem_info_text(struct EjProblemInfo *epi)
 void
 ejfuse_run_info_text(struct EjRunInfo *eri)
 {
+    char *text_s = NULL;
+    size_t text_z = 0;
+    FILE *text_f = open_memstream(&text_s, &text_z);
+
+    fclose(text_f);
+    eri->info_text = text_s;
+    eri->info_size = text_z;
 }
