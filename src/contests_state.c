@@ -754,10 +754,10 @@ run_states_get(struct EjRunStates *erss, int run_id)
         while (low < high) {
             int mid = (low + high) / 2;
             struct EjRunState *tmp = erss->runs[mid];
-            if (ers->run_id == run_id) {
+            if (tmp->run_id == run_id) {
                 ers = tmp;
                 break;
-            } else if (ers->run_id < run_id) {
+            } else if (tmp->run_id < run_id) {
                 low = mid + 1;
             } else {
                 high = mid;
