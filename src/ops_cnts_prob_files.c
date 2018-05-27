@@ -35,7 +35,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
     off_t file_size = 0;
     long long mtime_us = 0;
 
-    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO)) {
+    if (efr->file_name_code == FILE_NAME_INFO) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
@@ -44,7 +44,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
         file_size = epi->info_size;
         mtime_us = epi->update_time_us;
         problem_info_read_unlock(epi);
-    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
+    } else if (efr->file_name_code == FILE_NAME_INFO_JSON) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
@@ -53,7 +53,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
         file_size = epi->info_json_size;
         mtime_us = epi->update_time_us;
         problem_info_read_unlock(epi);
-    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
+    } else if (efr->file_name_code == FILE_NAME_STATEMENT_HTML) {
         // try to not request statement.html from server
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
@@ -108,14 +108,14 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     int perms = EJFUSE_FILE_PERMS;
     mode &= 07;
 
-    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO) || !strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
+    if (efr->file_name_code == FILE_NAME_INFO || efr->file_name_code == FILE_NAME_INFO_JSON) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
             return -ENOENT;
         }
         problem_info_read_unlock(epi);
-    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
+    } else if (efr->file_name_code == FILE_NAME_STATEMENT_HTML) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok || !epi->is_viewable || !epi->is_statement_avaiable) {
             problem_info_read_unlock(epi);
@@ -154,14 +154,14 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
 static int
 ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
-    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO) || !strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
+    if (efr->file_name_code == FILE_NAME_INFO || efr->file_name_code == FILE_NAME_INFO_JSON) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
             return -ENOENT;
         }
         problem_info_read_unlock(epi);
-    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
+    } else if (efr->file_name_code == FILE_NAME_STATEMENT_HTML) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok || !epi->is_viewable || !epi->is_statement_avaiable) {
             problem_info_read_unlock(epi);
@@ -191,7 +191,7 @@ static int
 ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
 {
     int retval = -EIO;
-    if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO)) {
+    if (efr->file_name_code == FILE_NAME_INFO) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
@@ -209,7 +209,7 @@ ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, of
             retval = size;
         }
         problem_info_read_unlock(epi);
-    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_INFO_JSON)) {
+    } else if (efr->file_name_code == FILE_NAME_INFO_JSON) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok) {
             problem_info_read_unlock(epi);
@@ -227,7 +227,7 @@ ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, of
             retval = size;
         }
         problem_info_read_unlock(epi);
-    } else if (!strcmp(efr->file_name, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
+    } else if (efr->file_name_code == FILE_NAME_STATEMENT_HTML) {
         struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
         if (!epi || !epi->ok || !epi->is_viewable || !epi->is_statement_avaiable) {
             problem_info_read_unlock(epi);

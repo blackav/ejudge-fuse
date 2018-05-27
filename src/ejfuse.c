@@ -835,9 +835,9 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
     }
     const char *p2 = strchr(p1 + 1, '/');
     if (!p2) {
+        efr->file_name = p1 + 1;
         efr->file_name_code = recognize_special_file_names(p1 + 1);
         if (efr->file_name_code == FILE_NAME_INFO || efr->file_name_code == FILE_NAME_INFO_JSON) {
-            efr->file_name = p1 + 1;
             contest_session_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
             contest_info_maybe_update(efr->efs, efr->ecs, efr->current_time_us);
             efr->ops = &ejfuse_contest_info_operations;
@@ -905,10 +905,11 @@ ejf_process_path(const char *path, struct EjFuseRequest *efr)
     }
     const char *p4 = strchr(p3 + 1, '/');
     if (!p4) {
-        if (!strcmp(p3 + 1, FN_CONTEST_PROBLEM_INFO)
-            || !strcmp(p3 + 1, FN_CONTEST_PROBLEM_INFO_JSON)
-            || !strcmp(p3 + 1, FN_CONTEST_PROBLEM_STATEMENT_HTML)) {
-            efr->file_name = p3 + 1;
+        efr->file_name = p3 + 1;
+        efr->file_name_code = recognize_special_file_names(efr->file_name);
+        if (efr->file_name_code == FILE_NAME_INFO
+            || efr->file_name_code == FILE_NAME_INFO_JSON
+            || efr->file_name_code == FILE_NAME_STATEMENT_HTML) {
             efr->ops = &ejfuse_contest_problem_files_operations;
             return 0;
         } else if (!strcmp(p3 + 1, "runs")) {
