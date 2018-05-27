@@ -172,6 +172,7 @@ contest_state_create(int cnts_id)
     atomic_store_explicit(&ecs->log, contest_log_create(""), memory_order_relaxed);
     atomic_store_explicit(&ecs->session, contest_session_create(cnts_id), memory_order_relaxed);
     ecs->prob_states = problem_states_create();
+    ecs->run_states = run_states_create();
     return ecs;
 }
 

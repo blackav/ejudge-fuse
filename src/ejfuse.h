@@ -59,6 +59,7 @@ struct EjContestList
 
 struct EjFileNodes;
 struct EjSubmitThread;
+struct EjRunState;
 
 struct EjFuseState
 {
@@ -108,6 +109,7 @@ struct EjFuseRequest
     struct EjProblemState *eps;
     int lang_id;
     int run_id;
+    struct EjRunState *ers;
 };
 
 struct EjFuseRequest;

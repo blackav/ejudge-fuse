@@ -687,7 +687,8 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
     memcpy(run_buf, path + 1, len);
     run_buf[len] = 0;
 
-    if (!strcmp(run_buf, "info.json") || !strcmp(run_buf, "INFO")) {
+    efr->file_name_code = recognize_special_file_names(run_buf);
+    if (efr->file_name_code == FILE_NAME_INFO || efr->file_name_code == FILE_NAME_INFO_JSON) {
         if (p1) {
             return -ENOTDIR;
         }
