@@ -664,6 +664,12 @@ recognize_special_file_names(const unsigned char *file_name)
     if (!strcmp(file_name, "statement.html")) {
         return FILE_NAME_STATEMENT_HTML;
     }
+    if (!strcmp(file_name, "compiler.txt")) {
+        return FILE_NAME_COMPILER_TXT;
+    }
+    if (!strcmp(file_name, "valuer.txt")) {
+        return FILE_NAME_VALUER_TXT;
+    }
     return 0;
 }
 
