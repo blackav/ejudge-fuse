@@ -173,6 +173,12 @@ ejf_readdir(
     if (res >= sizeof(entry_path)) { abort(); }
     es.st_ino = get_inode(efr->efs, entry_path);
     filler(buf, "info.json", &es, 0);
+    if (eri->compiler_text && eri->compiler_size) {
+        res = snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, "compiler.txt");
+        if (res >= sizeof(entry_path)) { abort(); }
+        es.st_ino = get_inode(efr->efs, entry_path);
+        filler(buf, "compiler.txt", &es, 0);
+    }
 
     run_info_read_unlock(eri);
     return 0;
