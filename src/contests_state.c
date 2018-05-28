@@ -979,6 +979,11 @@ run_info_free(struct EjRunInfo *eri)
         free(eri->log_s);
         free(eri->info_json_text);
         free(eri->info_text);
+        free(eri->compiler_text);
+        free(eri->src_sfx);
+        free(eri->score_str);
+        free(eri->valuer_text);
+        free(eri->tests);
         free(eri);
     }
 }

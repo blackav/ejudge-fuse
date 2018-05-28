@@ -21,6 +21,7 @@
 #include "contests_state.h"
 #include "ejfuse.h"
 #include "cJSON.h"
+#include "base64.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -925,6 +926,46 @@ failed:
     goto cleanup;
 }
 
+static int
+parse_json_content(
+        cJSON *content,
+        unsigned char **p_data,
+        size_t *p_size)
+{
+    if (!content) return 0;
+    if (content->type != cJSON_Object) return -1;
+    cJSON *jmethod = cJSON_GetObjectItem(content, "method");
+    if (!jmethod || jmethod->type != cJSON_Number || jmethod->valueint != 1) return -1;
+    cJSON *jsize = cJSON_GetObjectItem(content, "size");
+    if (!jsize || jsize->type != cJSON_Number || jsize->valueint < 0) return -1;
+    cJSON *jdata = cJSON_GetObjectItem(content, "data");
+    if (!jdata || jdata->type != cJSON_String) return -1;
+    size_t b64_size = strlen(jdata->valuestring);
+
+    if (!b64_size) {
+        if (jsize->valueint != 0) return -1;
+        *p_data = malloc(1);
+        *p_size = 0;
+        **p_data = 0;
+        return 1;
+    }
+
+    unsigned char *buf = malloc(b64_size + 1);
+    if (!buf) {
+        return -1;
+    }
+
+    int err = 0;
+    int outlen = base64_decode(jdata->valuestring, b64_size, buf, &err);
+    if (err || outlen < 0 || outlen != jsize->valueint) {
+        free(buf);
+        return -1;
+    }
+    *p_data = buf;
+    *p_size = outlen;
+    return 1;
+}
+
 int
 ejudge_json_parse_run_info(
         FILE *err_f,
@@ -948,7 +989,207 @@ ejudge_json_parse_run_info(
     }
 
     if (jok->type == cJSON_True) {
-        // TODO
+      cJSON *jresult = cJSON_GetObjectItem(root, "result");
+      if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+      cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+      if (!jj || jj->type != cJSON_Number) goto invalid_json;
+      epi->server_time = jj->valueint;
+
+      cJSON *jrun = cJSON_GetObjectItem(jresult, "run");
+      if (!jrun || jrun->type != cJSON_Object) goto invalid_json;
+
+      jj = cJSON_GetObjectItem(jrun, "run_id");
+      if (!jj || jj->type != cJSON_Number) goto invalid_json;
+
+      jj = cJSON_GetObjectItem(jrun, "prob_id");
+      if (!jj || jj->type != cJSON_Number) goto invalid_json;
+      epi->prob_id = jj->valueint;
+
+      jj = cJSON_GetObjectItem(jrun, "run_time_us");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->run_time_us = jj->valuedouble;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "run_time");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->run_time = jj->valueint;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "duration");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->duration = jj->valueint;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "lang_id");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->lang_id = jj->valueint;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "user_id");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->user_id = jj->valueint;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "size");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->size = jj->valueint;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "status");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->status = jj->valueint;
+      }
+
+      jj = cJSON_GetObjectItem(jrun, "is_imported");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_imported = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_hidden");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_hidden = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_with_duration");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_with_duration = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_standard_problem");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_standard_problem = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_minimal_report");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_minimal_report = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_with_effective_time");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_with_effective_time = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "effective_time");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->effective_time = jj->valueint;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_src_enabled");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_src_enabled = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "src_sfx");
+      if (jj) {
+        if (jj->type != cJSON_String) goto invalid_json;
+        epi->src_sfx = strdup(jj->valuestring);
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_report_enabled");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_report_enabled = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_failed_test_available");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_failed_test_available = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "failed_test");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->failed_test = jj->valueint;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_passed_tests_available");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_passed_tests_available = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "passed_tests");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->passed_tests = jj->valueint;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_score_available");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_score_available = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "score");
+      if (jj) {
+        if (jj->type != cJSON_Number) goto invalid_json;
+        epi->score = jj->valueint;
+      }
+      jj = cJSON_GetObjectItem(jrun, "score_str");
+      if (jj) {
+        if (jj->type != cJSON_String) goto invalid_json;
+        epi->score_str = strdup(jj->valuestring);
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_compiler_output_available");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_compiler_output_available = 1;
+      }
+      jj = cJSON_GetObjectItem(jrun, "is_report_available");
+      if (jj && jj->type == cJSON_True) {
+          epi->is_report_available = 1;
+      }
+
+      cJSON *jco = cJSON_GetObjectItem(jresult, "compiler_output");
+      if (jco) {
+          if (jco->type != cJSON_Object) goto invalid_json;
+          if (parse_json_content(cJSON_GetObjectItem(jco, "content"), &epi->compiler_text, &epi->compiler_size) < 0) goto invalid_json;
+      }
+
+      cJSON *jtr = cJSON_GetObjectItem(jresult, "testing_report");
+      if (jtr) {
+          if (jtr->type != cJSON_Object) goto invalid_json;
+
+          jj = cJSON_GetObjectItem(jtr, "valuer_comment");
+          if (jj) {
+              if (jj->type != cJSON_Object) goto invalid_json;
+              if (parse_json_content(cJSON_GetObjectItem(jj, "content"), &epi->valuer_text, &epi->valuer_size) < 0) goto invalid_json;
+          }
+
+          cJSON *jtests = cJSON_GetObjectItem(jtr, "tests");
+          if (jtests) {
+              if (jtests->type != cJSON_Array) goto invalid_json;
+              int count = cJSON_GetArraySize(jtests);
+              epi->test_count = count;
+              epi->tests = calloc(count, sizeof(epi->tests[0]));
+              if (!epi->tests) goto invalid_json;
+              for (int i = 0; i < count; ++i) {
+                  cJSON *jtest = cJSON_GetArrayItem(jtests, i);
+                  struct EjRunInfoTestResult *et = &epi->tests[i];
+                  if (!jtest || jtest->type != cJSON_Object) goto invalid_json;
+
+                  jj = cJSON_GetObjectItem(jtest, "num");
+                  if (!jj || jj->type != cJSON_Number) goto invalid_json;
+                  et->num = jj->valueint;
+
+                  jj = cJSON_GetObjectItem(jtest, "is_visibility_exists");
+                  if (!jj || jj->type == cJSON_False) {
+                      jj = cJSON_GetObjectItem(jtest, "status");
+                      if (jj) {
+                          if (jj->type != cJSON_Number) goto invalid_json;
+                          // FIXME: check status validity
+                          et->status = jj->valueint;
+                      }
+                      jj = cJSON_GetObjectItem(jtest, "time_ms");
+                      if (jj) {
+                          if (jj->type != cJSON_Number) goto invalid_json;
+                          et->time_ms = jj->valueint;
+                      }
+                      jj = cJSON_GetObjectItem(jtest, "score");
+                      if (jj) {
+                          if (jj->type != cJSON_Number) goto invalid_json;
+                          et->score = jj->valueint;
+                      }
+                      jj = cJSON_GetObjectItem(jtest, "max_score");
+                      if (jj) {
+                          if (jj->type != cJSON_Number) goto invalid_json;
+                          et->max_score = jj->valueint;
+                      }
+                  }
+              }
+          }
+      }
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
         goto failed;

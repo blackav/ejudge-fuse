@@ -272,6 +272,16 @@ struct EjProblemState
     struct EjProblemSubmits *submits;
 };
 
+struct EjRunInfoTestResult
+{
+    int num;
+    int status;
+    int time_ms;
+    int score;
+    int max_score;
+    unsigned char is_visibility_exists;
+};
+
 struct EjRunInfo
 {
     _Atomic int reader_count;
@@ -288,6 +298,48 @@ struct EjRunInfo
     size_t info_size;
 
     int run_id;
+
+    time_t server_time;
+    // run
+    int prob_id;
+    long long run_time_us;
+    time_t run_time;
+    time_t duration;
+    int lang_id;
+    int user_id;
+    int size;
+    int status;
+    time_t effective_time;
+    unsigned char *src_sfx;
+    int failed_test;
+    int passed_tests;
+    int score;
+    unsigned char *score_str;
+
+    unsigned char is_imported;
+    unsigned char is_hidden;
+    unsigned char is_with_duration;
+    unsigned char is_standard_problem;
+    unsigned char is_minimal_report;
+    unsigned char is_with_effective_time;
+    unsigned char is_src_enabled;
+    unsigned char is_report_enabled;
+    unsigned char is_failed_test_available;
+    unsigned char is_passed_tests_available;
+    unsigned char is_score_available;
+    unsigned char is_compiler_output_available;
+    unsigned char is_report_available;
+
+    // compiler output
+    unsigned char *compiler_text;
+    size_t compiler_size;
+
+    // testing report
+    unsigned char *valuer_text;
+    size_t valuer_size;
+
+    int test_count;
+    struct EjRunInfoTestResult *tests;
 };
 
 // run state is a container for updateable run structures
