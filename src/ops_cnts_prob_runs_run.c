@@ -179,6 +179,23 @@ ejf_readdir(
         es.st_ino = get_inode(efr->efs, entry_path);
         filler(buf, "compiler.txt", &es, 0);
     }
+    if (eri->valuer_text && eri->valuer_size) {
+        res = snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, "valuer.txt");
+        if (res >= sizeof(entry_path)) { abort(); }
+        es.st_ino = get_inode(efr->efs, entry_path);
+        filler(buf, "valuer.txt", &es, 0);
+    }
+    if (eri->is_src_enabled) {
+        const unsigned char *src_sfx = eri->src_sfx;
+        if (!src_sfx) src_sfx = "";
+        unsigned char entry_name[NAME_MAX + 1];
+        if (snprintf(entry_name, sizeof(entry_name), "source%s", src_sfx) < sizeof(entry_name)) {
+            if (snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, entry_name) < sizeof(entry_path)) {
+                es.st_ino = get_inode(efr->efs, entry_path);
+                filler(buf, entry_name, &es, 0);
+            }
+        }
+    }
 
     run_info_read_unlock(eri);
     return 0;
