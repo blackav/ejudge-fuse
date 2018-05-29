@@ -99,7 +99,7 @@ static int
 ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
     struct EjProblemInfo *epi = problem_info_read_lock(efr->eps);
-    if (!epi || !epi->ok || !epi->is_submittable) {
+    if (!epi || !epi->ok) {
         problem_info_read_unlock(epi);
         return -ENOENT;
     }
