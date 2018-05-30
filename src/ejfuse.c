@@ -575,6 +575,38 @@ run_info_maybe_update(
     run_info_set(ers, eri);
 }
 
+void
+run_source_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunState *ers,
+        long long current_time_us)
+{
+    int update_needed = 0;
+    struct EjRunSource *ert = run_source_read_lock(ers);
+    if (ert && ert->ok) {
+        if (ert->recheck_time_us > 0 && current_time_us >= ert->recheck_time_us) {
+            update_needed = 1;
+        }
+    } else {
+        update_needed = 1;
+        if (ert && ert->recheck_time_us > 0 && current_time_us < ert->recheck_time_us) {
+            update_needed = 0;
+        }
+    }
+    run_source_read_unlock(ert);
+    if (!update_needed) return;
+
+    if (run_source_try_write_lock(ers)) return;
+
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
+
+    ert = run_source_create(ers->run_id);
+    ejudge_client_run_source_request(efs, ecs, &esv, ers->run_id, current_time_us, ert);
+    run_source_set(ers, ert);
+}
+
 unsigned
 get_inode(struct EjFuseState *efs, const char *path)
 {

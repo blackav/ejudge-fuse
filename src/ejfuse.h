@@ -209,6 +209,12 @@ run_info_maybe_update(
         struct EjContestState *ecs,
         struct EjRunState *ers,
         long long current_time_us);
+void
+run_source_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunState *ers,
+        long long current_time_us);
 
 /* special file names */
 enum
