@@ -342,6 +342,22 @@ struct EjRunInfo
     struct EjRunInfoTestResult *tests;
 };
 
+struct EjRunSource
+{
+    _Atomic int reader_count;
+
+    int run_id;
+
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+    long long update_time_us;
+
+    long long mtime;
+    unsigned char *data;
+    size_t size;
+};
+
 // run state is a container for updateable run structures
 struct EjRunState
 {
@@ -350,6 +366,10 @@ struct EjRunState
     _Atomic int info_guard;
     struct EjRunInfo *info;
     _Atomic _Bool info_update;
+
+    _Atomic int src_guard;
+    struct EjRunSource *src;
+    _Atomic _Bool src_update;
 };
 
 struct EjProblemStates;
