@@ -28,12 +28,27 @@
 #include <limits.h>
 #include <string.h>
 
+typedef void (*unlocker_t)(void *ptr);
+
+static void
+run_info_unlocker(void *ptr)
+{
+    run_info_read_unlock((struct EjRunInfo *) ptr);
+}
+static void
+run_source_unlocker(void *ptr)
+{
+    run_source_read_unlock((struct EjRunSource *) ptr);
+}
+
 static int
 get_info(
         struct EjFuseRequest *efr,
         unsigned char **p_data,
         off_t *p_size,
-        long long *p_mtime_us)
+        long long *p_mtime_us,
+        unlocker_t *p_unlocker,
+        void **p_unlock_data)
 {
     switch (efr->file_name_code) {
     case FILE_NAME_INFO:
@@ -80,12 +95,58 @@ get_info(
         } else {
             abort();
         }
-        run_info_read_unlock(eri);
+        // in the data mode the data must remain locked
+        if (!p_data) {
+            run_info_read_unlock(eri);
+        } else {
+            *p_unlocker = run_info_unlocker;
+            *p_unlock_data = eri;
+        }
     }
         break;
     case FILE_NAME_SOURCE: {
         efr->file_name = "source";
-        return -ENOENT;
+        if (p_data) {
+            // need data, so download the run
+            run_source_maybe_update(efr->efs, efr->ecs, efr->ers, efr->current_time_us);
+        }
+        struct EjRunSource *ert = run_source_read_lock(efr->ers);
+        if (!ert && !p_data) {
+            // report run info before the first download
+            run_source_read_unlock(ert);
+            struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+            if (!eri || !eri->ok) {
+                run_info_read_unlock(eri);
+                return -ENOENT;
+            }
+            if (p_size) *p_size = eri->size;
+            if (p_mtime_us) *p_mtime_us = eri->run_time_us;
+            run_info_read_unlock(eri);
+            return 0;
+        }
+        if (!ert->ok) {
+            run_source_read_unlock(ert);
+            return -ENOENT;
+        }
+        if (p_data) *p_data = ert->data;
+        if (p_size) *p_size = ert->size;
+        if (p_mtime_us) {
+            // FIXME: avoid accessing run_info?
+            struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+            if (eri && eri->ok) {
+                *p_mtime_us = eri->run_time_us;
+            } else {
+                *p_mtime_us = ert->update_time_us;
+            }
+            run_info_read_unlock(eri);
+        }
+        if (!p_data) {
+            run_source_read_unlock(ert);
+        } else {
+            *p_unlocker = run_source_unlocker;
+            *p_unlock_data = ert;
+        }
+        return 0;
     }
         break;
     default:
@@ -106,7 +167,7 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 
     off_t file_size = 0;
     long long mtime_us = 0;
-    int err = get_info(efr, NULL, &file_size, &mtime_us);
+    int err = get_info(efr, NULL, &file_size, &mtime_us, NULL, NULL);
     if (err < 0) return err;
     unsigned char fullpath[PATH_MAX];
     if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/runs/%d/%s", efr->contest_id, efr->prob_id, efr->run_id, efr->file_name) >= sizeof(fullpath)) {
@@ -139,7 +200,7 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
     int perms = EJFUSE_FILE_PERMS;
     mode &= 07;
 
-    int res = get_info(efr, NULL, NULL, NULL);
+    int res = get_info(efr, NULL, NULL, NULL, NULL, NULL);
     if (res < 0) return res;
 
     if (efr->efs->owner_uid == efr->fx->uid) {
@@ -165,8 +226,14 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
 static int
 ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
-    int res = get_info(efr, NULL, NULL, NULL);
+    unsigned char *file_data = NULL;
+    off_t file_size;
+    unlocker_t unlocker = NULL;
+    void *unlock_data = NULL;
+
+    int res = get_info(efr, &file_data, &file_size, NULL, &unlocker, &unlock_data);
     if (res < 0) return res;
+    unlocker(unlock_data);
 
     if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
@@ -182,16 +249,21 @@ ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, of
 {
     unsigned char *file_data = NULL;
     off_t file_size = 0;
-    int res = get_info(efr, &file_data, &file_size, NULL);
+    unlocker_t unlocker = NULL;
+    void *unlock_data = NULL;
+    int res = get_info(efr, &file_data, &file_size, NULL, &unlocker, &unlock_data);
     if (res < 0) return res;
 
-    if (!size || offset < 0 || offset >= file_size) return 0;
-    if ((int) size <= 0) return 0;
+    if (!size || offset < 0 || offset >= file_size || (int) size <= 0) {
+        unlocker(unlock_data);
+        return 0;
+    }
 
     if (file_size - offset < size) {
         size = file_size - offset;
     }
     memcpy(buf, file_data + offset, size);
+    unlocker(unlock_data);
     return size;
 }
 
