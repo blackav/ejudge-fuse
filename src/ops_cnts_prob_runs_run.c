@@ -190,7 +190,7 @@ ejf_readdir(
         if (!src_sfx) src_sfx = "";
         unsigned char entry_name[NAME_MAX + 1];
         if (snprintf(entry_name, sizeof(entry_name), "source%s", src_sfx) < sizeof(entry_name)) {
-            if (snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, entry_name) < sizeof(entry_path)) {
+            if (snprintf(entry_path, sizeof(entry_path), "%s/source", dot_path) < sizeof(entry_path)) {
                 es.st_ino = get_inode(efr->efs, entry_path);
                 filler(buf, entry_name, &es, 0);
             }

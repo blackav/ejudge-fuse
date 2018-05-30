@@ -179,6 +179,9 @@ ejfuse_run_info_text(struct EjRunInfo *eri)
     size_t text_z = 0;
     FILE *text_f = open_memstream(&text_s, &text_z);
 
+    fprintf(text_f, "Problem information:\n");
+    fprintf(text_f, "\tRun Id:\t\t%d\n", eri->run_id);
+
     fclose(text_f);
     eri->info_text = text_s;
     eri->info_size = text_z;

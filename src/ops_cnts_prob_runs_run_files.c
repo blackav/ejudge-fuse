@@ -24,9 +24,180 @@
 #include "ops_generic.h"
 #include "contests_state.h"
 
+#include <errno.h>
+#include <limits.h>
+#include <string.h>
+
+static int
+get_info(
+        struct EjFuseRequest *efr,
+        unsigned char **p_data,
+        off_t *p_size,
+        long long *p_mtime_us)
+{
+    switch (efr->file_name_code) {
+    case FILE_NAME_INFO:
+    case FILE_NAME_INFO_JSON:
+    case FILE_NAME_COMPILER_TXT:
+    case FILE_NAME_VALUER_TXT: {
+        struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+        if (!eri || !eri->ok) {
+            run_info_read_unlock(eri);
+            return -ENOENT;
+        }
+        if (efr->file_name_code == FILE_NAME_INFO) {
+            if (!eri->info_text || !eri->info_size) {
+                run_info_read_unlock(eri);
+                return -ENOENT;
+            }
+            if (p_data) *p_data = eri->info_text;
+            if (p_size) *p_size = eri->info_size;
+            if (p_mtime_us) *p_mtime_us = eri->update_time_us;
+        } else if (efr->file_name_code == FILE_NAME_INFO_JSON) {
+            if (!eri->info_json_size || !eri->info_json_size) {
+                run_info_read_unlock(eri);
+                return -ENOENT;
+            }
+            if (p_data) *p_data = eri->info_json_text;
+            if (p_size) *p_size = eri->info_json_size;
+            if (p_mtime_us) *p_mtime_us = eri->update_time_us;
+        } else if (efr->file_name_code == FILE_NAME_COMPILER_TXT) {
+            if (!eri->compiler_text || !eri->compiler_size) {
+                run_info_read_unlock(eri);
+                return -ENOENT;
+            }
+            if (p_data) *p_data = eri->compiler_text;
+            if (p_size) *p_size = eri->compiler_size;
+            if (p_mtime_us) *p_mtime_us = eri->update_time_us;
+        } else if (efr->file_name_code == FILE_NAME_VALUER_TXT) {
+            if (!eri->valuer_text || !eri->valuer_size) {
+                run_info_read_unlock(eri);
+                return -ENOENT;
+            }
+            if (p_data) *p_data = eri->valuer_text;
+            if (p_size) *p_size = eri->valuer_size;
+            if (p_mtime_us) *p_mtime_us = eri->update_time_us;
+        } else {
+            abort();
+        }
+        run_info_read_unlock(eri);
+    }
+        break;
+    case FILE_NAME_SOURCE: {
+        efr->file_name = "source";
+        return -ENOENT;
+    }
+        break;
+    default:
+        return -ENOENT;
+    }
+    return 0;
+}
+
+// INFO info.json compiler.txt valuer.txt source*
+static int
+ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
+{
+    struct EjFuseState *efs = efr->efs;
+
+    if (efs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+
+    off_t file_size = 0;
+    long long mtime_us = 0;
+    int err = get_info(efr, NULL, &file_size, &mtime_us);
+    if (err < 0) return err;
+    unsigned char fullpath[PATH_MAX];
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/runs/%d/%s", efr->contest_id, efr->prob_id, efr->run_id, efr->file_name) >= sizeof(fullpath)) {
+        return -ENAMETOOLONG;
+    }
+
+    memset(stb, 0, sizeof(*stb));
+
+    stb->st_ino = get_inode(efs, fullpath);
+    stb->st_mode = S_IFREG | EJFUSE_FILE_PERMS;
+    stb->st_nlink = 2;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
+    stb->st_size = file_size;
+    long long current_time_us = efr->current_time_us;
+    if (mtime_us <= 0) mtime_us = efs->start_time_us;
+    stb->st_atim.tv_sec = current_time_us / 1000000;
+    stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = mtime_us / 1000000;
+    stb->st_mtim.tv_nsec = (mtime_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+
+    return 0;
+}
+
+static int
+ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
+{
+    int perms = EJFUSE_FILE_PERMS;
+    mode &= 07;
+
+    int res = get_info(efr, NULL, NULL, NULL);
+    if (res < 0) return res;
+
+    if (efr->efs->owner_uid == efr->fx->uid) {
+        perms >>= 6;
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
+        perms >>= 3;
+    } else {
+        // nothing
+    }
+    if (((perms & 07) & mode) == mode) {
+        return 0;
+    } else {
+        return -EPERM;
+    }
+}
+
+static int
+ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    return 0;
+}
+
+static int
+ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    int res = get_info(efr, NULL, NULL, NULL);
+    if (res < 0) return res;
+
+    if (efr->efs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+    if ((ffi->flags & O_ACCMODE) != O_RDONLY) {
+        return -EPERM;
+    }
+    return 0;
+}
+
+static int
+ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
+{
+    unsigned char *file_data = NULL;
+    off_t file_size = 0;
+    int res = get_info(efr, &file_data, &file_size, NULL);
+    if (res < 0) return res;
+
+    if (!size || offset < 0 || offset >= file_size) return 0;
+    if ((int) size <= 0) return 0;
+
+    if (file_size - offset < size) {
+        size = file_size - offset;
+    }
+    memcpy(buf, file_data + offset, size);
+    return size;
+}
+
 const struct EjFuseOperations ejfuse_contest_problem_runs_run_files_operations =
 {
-    NULL, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
+    ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
     ejf_generic_readlink, //int (*readlink)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_mknod, //int (*mknod)(struct EjFuseRequest *, const char *, mode_t, dev_t);
     ejf_generic_mkdir, //int (*mkdir)(struct EjFuseRequest *, const char *, mode_t);
@@ -38,12 +209,12 @@ const struct EjFuseOperations ejfuse_contest_problem_runs_run_files_operations =
     ejf_generic_chmod, //int (*chmod)(struct EjFuseRequest *, const char *, mode_t);
     ejf_generic_chown, //int (*chown)(struct EjFuseRequest *, const char *, uid_t, gid_t);
     ejf_generic_truncate, //int (*truncate)(struct EjFuseRequest *, const char *, off_t);
-    NULL, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //int (*read)(struct EjFuseRequest *, const char *, char *, size_t, off_t, struct fuse_file_info *);
+    ejf_open, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_read, //int (*read)(struct EjFuseRequest *, const char *, char *, size_t, off_t, struct fuse_file_info *);
     ejf_generic_write, //int (*write)(struct EjFuseRequest *, const char *, const char *, size_t, off_t, struct fuse_file_info *);
     ejf_generic_statfs, //int (*statfs)(struct EjFuseRequest *, const char *, struct statvfs *);
     ejf_generic_flush, //int (*flush)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //int (*release)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_release, //int (*release)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsync, //int (*fsync)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
     ejf_generic_setxattr, //int (*setxattr)(struct EjFuseRequest *, const char *, const char *, const char *, size_t, int);
     ejf_generic_getxattr, //int (*getxattr)(struct EjFuseRequest *, const char *, const char *, char *, size_t);
@@ -53,7 +224,7 @@ const struct EjFuseOperations ejfuse_contest_problem_runs_run_files_operations =
     ejf_generic_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
     ejf_generic_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
-    NULL, //int (*access)(struct EjFuseRequest *, const char *, int);
+    ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
     ejf_generic_create, //int (*create)(struct EjFuseRequest *, const char *, mode_t, struct fuse_file_info *);
     ejf_generic_ftruncate, //int (*ftruncate)(struct EjFuseRequest *, const char *, off_t, struct fuse_file_info *);
     ejf_generic_fgetattr, //int (*fgetattr)(struct EjFuseRequest *, const char *, struct stat *, struct fuse_file_info *);

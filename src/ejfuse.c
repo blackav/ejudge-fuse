@@ -571,6 +571,7 @@ run_info_maybe_update(
 
     eri = run_info_create(ers->run_id);
     ejudge_client_run_info_request(efs, ecs, &esv, ers->run_id, current_time_us, eri);
+    ejfuse_run_info_text(eri);
     run_info_set(ers, eri);
 }
 
@@ -670,6 +671,12 @@ recognize_special_file_names(const unsigned char *file_name)
     if (!strcmp(file_name, "valuer.txt")) {
         return FILE_NAME_VALUER_TXT;
     }
+    if (!strcmp(file_name, "source")) {
+        return FILE_NAME_SOURCE;
+    }
+    if (!strncmp(file_name, "source.", 7)) {
+        return FILE_NAME_SOURCE;
+    }
     return 0;
 }
 
@@ -736,6 +743,17 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
 
     if (!p1) {
         efr->ops = &ejfuse_contest_problem_runs_run_operations;
+        return 0;
+    }
+
+    efr->ers = run_states_get(efr->ecs->run_states, efr->run_id);
+    if (!efr->ers) return -ENOENT;
+    run_info_maybe_update(efr->efs, efr->ecs, efr->ers, efr->current_time_us);
+    const char *p2 = strchr(p1 + 1, '/');
+    if (!p2) {
+        efr->file_name = p1 + 1;
+        efr->file_name_code = recognize_special_file_names(efr->file_name);
+        efr->ops = &ejfuse_contest_problem_runs_run_files_operations;
         return 0;
     }
 
