@@ -212,7 +212,7 @@ contest_list_find(const struct EjContestList *contests, int cnts_id)
     while (low < high) {
         int med = (low + high) / 2;
         struct EjContestListItem *fcntx = &contests->entries[med];
-        
+
         if (fcntx->id == cnts_id) {
             return fcntx;
         } else if (fcntx->id < cnts_id) {
@@ -580,7 +580,7 @@ get_inode(struct EjFuseState *efs, const char *path)
 {
     unsigned char digest[SHA256_DIGEST_LENGTH];
     size_t len = strlen(path);
-    
+
     SHA256_CTX ctx;
     SHA256_Init(&ctx);
     SHA256_Update(&ctx, path, len);
@@ -1076,7 +1076,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "failed to initialize CURL\n");
         return 1;
     }
-    
+
     struct EjFuseState *efs = calloc(1, sizeof(*efs));
     efs->url = strdup(ej_url);
     efs->login = strdup(ej_user);

@@ -238,9 +238,8 @@ inode_hash_delete(struct EjInodeHash *ejh, const unsigned char *digest)
             j = (j + HASH_TABLE_OFFSET) % ejh->size;
         }
     }
-    
+
     --ejh->used;
 done:
     pthread_rwlock_unlock(&ejh->rwl);
 }
-

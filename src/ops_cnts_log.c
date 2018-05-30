@@ -214,4 +214,3 @@ const struct EjFuseOperations ejfuse_contest_log_operations =
     ejf_generic_flock, //int (*flock)(struct EjFuseRequest *, const char *, struct fuse_file_info *, int op);
     ejf_generic_fallocate, //int (*fallocate)(struct EjFuseRequest *, const char *, int, off_t, off_t, struct fuse_file_info *);
 };
-

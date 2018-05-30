@@ -620,7 +620,7 @@ const struct fuse_operations ejf_fuse_operations =
     ejf_entry_mknod,
 
     /**
-     * Create a directory 
+     * Create a directory
      *
      * Note that the mode argument may not have the type specification
      * bits set, i.e. S_ISDIR(mode) can be false.  To obtain the

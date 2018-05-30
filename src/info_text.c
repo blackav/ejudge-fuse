@@ -128,7 +128,7 @@ ejfuse_problem_info_text(struct EjProblemInfo *epi)
         unsigned char buf[128];
         fprintf(text_f, "\tMax Stack Size:\t\t%s\n", size_to_string(buf, sizeof(buf), epi->max_vm_size));
     }
-    
+
     fprintf(text_f, "Your statistics:\n");
         /*
 
