@@ -487,3 +487,11 @@ struct EjRunInfo *run_info_read_lock(struct EjRunState *ers);
 void run_info_read_unlock(struct EjRunInfo *eri);
 int run_info_try_write_lock(struct EjRunState *ers);
 void run_info_set(struct EjRunState *ers, struct EjRunInfo *eri);
+
+struct EjRunSource *run_source_create(int run_id);
+void run_source_free(struct EjRunSource *ert);
+
+struct EjRunSource *run_source_read_lock(struct EjRunState *ers);
+void run_source_read_unlock(struct EjRunSource *ert);
+int run_source_try_write_lock(struct EjRunState *ers);
+void run_source_set(struct EjRunState *ers, struct EjRunSource *eri);
