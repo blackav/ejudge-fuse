@@ -30,6 +30,7 @@ struct EjProblemInfo;
 struct EjProblemRuns;
 struct EjProblemStatement;
 struct EjRunInfo;
+struct EjRunSource;
 struct EjSessionValue;
 struct EjTopSession;
 
@@ -104,6 +105,14 @@ ejudge_client_run_info_request(
         int run_id,
         long long current_time_us,
         struct EjRunInfo *eri); // output
+void
+ejudge_client_run_source_request(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int run_id,
+        long long current_time_us,
+        struct EjRunSource *ert); // output
 
 int
 ejudge_json_parse_top_session(
