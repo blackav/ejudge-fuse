@@ -48,4 +48,3 @@ submit_item_create(
 int submit_thread_start(struct EjSubmitThread *st, struct EjFuseState *);
 
 void submit_thread_enqueue(struct EjSubmitThread *st, struct EjSubmitItem *si);
-

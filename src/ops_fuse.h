@@ -23,4 +23,3 @@
 #include <fuse.h>
 
 extern const struct fuse_operations ejf_fuse_operations;
-

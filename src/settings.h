@@ -33,4 +33,3 @@ enum { EJFUSE_CACHING_TIME = 30000000 }; // 30s
 
 /* server error retry timeout (in us - microseconds) */
 enum { EJFUSE_RETRY_TIME = 10000000 }; // 10s
-

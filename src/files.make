@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> 
+# Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru>
 
 #
 # This file is part of ejudge-fuse.

@@ -44,7 +44,7 @@ void
 ejudge_client_get_contest_list_request(
         struct EjFuseState *efs,
         const struct EjSessionValue *esv,
-        long long current_time_us, 
+        long long current_time_us,
         struct EjContestList *contests); // output
 
 void
