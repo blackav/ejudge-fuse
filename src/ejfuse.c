@@ -640,6 +640,40 @@ run_messages_maybe_update(
     run_messages_set(ers, erms);
 }
 
+void
+run_test_data_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunTest *ert,
+        int run_id,
+        int index,
+        long long current_time_us)
+{
+    int update_needed = 0;
+    struct EjRunTestData *ertd = run_test_data_read_lock(ert, index);
+    if (ertd && ertd->ok) {
+        if (ertd->recheck_time_us > 0 && current_time_us >= ertd->recheck_time_us) {
+            update_needed = 1;
+        }
+    } else {
+        update_needed = 1;
+        if (ertd && ertd->recheck_time_us > 0 && current_time_us < ertd->recheck_time_us) {
+            update_needed = 0;
+        }
+    }
+    run_test_data_read_unlock(ertd);
+    if (!update_needed) return;
+
+    if (run_test_data_try_write_lock(ert, index)) return;
+
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
+
+    ertd = run_test_data_create();
+    ejudge_client_run_test_request(efs, ecs, &esv, run_id, ert->num, index, current_time_us, ertd);
+    run_test_data_set(ert, index, ertd);
+}
+
 unsigned
 get_inode(struct EjFuseState *efs, const char *path)
 {

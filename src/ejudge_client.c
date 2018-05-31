@@ -1121,3 +1121,16 @@ failed:
     contest_log_format(current_time_us, ecs, "run-messages-json", 0, NULL);
     goto cleanup;
 }
+
+void
+ejudge_client_run_test_request(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int run_id,
+        int num,
+        int index,
+        long long current_time_us,
+        struct EjRunTestData *ertd) // output
+{
+}

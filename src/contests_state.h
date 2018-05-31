@@ -400,6 +400,11 @@ struct EjRunTestData
 {
     _Atomic int reader_count;
 
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+    long long update_time_us;
+
     unsigned char *data;
     size_t size;
 };
@@ -418,6 +423,7 @@ enum
     TESTING_REPORT_CORRECT,
     TESTING_REPORT_ERROR,
     TESTING_REPORT_CHECKER,
+    TESTING_REPORT_ARGS,
 
     TESTING_REPORT_LAST
 };

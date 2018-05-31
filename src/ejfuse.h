@@ -174,6 +174,7 @@ struct EjContestState;
 struct EjFuseState;
 struct EjProblemState;
 struct EjRunState;
+struct EjRunTest;
 
 void
 contest_session_maybe_update(
@@ -220,6 +221,14 @@ run_messages_maybe_update(
         struct EjFuseState *efs,
         struct EjContestState *ecs,
         struct EjRunState *ers,
+        long long current_time_us);
+void
+run_test_data_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunTest *ert,
+        int run_id,
+        int index,
         long long current_time_us);
 
 /* special file names */
