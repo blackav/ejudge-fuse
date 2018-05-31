@@ -1095,3 +1095,73 @@ run_source_set(struct EjRunState *ers, struct EjRunSource *eri)
         run_source_free(old);
     }
 }
+
+struct EjRunMessages *
+run_messages_create(int run_id)
+{
+    struct EjRunMessages *erms = calloc(1, sizeof(*erms));
+    erms->run_id = run_id;
+    return erms;
+}
+
+void
+run_messages_free(struct EjRunMessages *erms)
+{
+    if (erms) {
+        for (int i = 0; i < erms->count; ++i) {
+            struct EjRunMessage *erm = &erms->messages[i];
+            free(erm->subject);
+            free(erm->data);
+        }
+        free(erms->messages);
+        free(erms->json_text);
+        free(erms->text);
+        free(erms->log_s);
+        free(erms);
+    }
+}
+
+struct EjRunMessages *
+run_messages_read_lock(struct EjRunState *ers)
+{
+    atomic_fetch_add_explicit(&ers->msg_guard, 1, memory_order_acquire);
+    struct EjRunMessages *ert = atomic_load_explicit(&ers->msg, memory_order_relaxed);
+    if (ert) {
+        atomic_fetch_add_explicit(&ert->reader_count, 1, memory_order_relaxed);
+    }
+    atomic_fetch_sub_explicit(&ers->msg_guard, 1, memory_order_release);
+    return ert;
+}
+
+void
+run_messages_read_unlock(struct EjRunMessages *erms)
+{
+    if (erms) {
+        atomic_fetch_sub_explicit(&erms->reader_count, 1, memory_order_relaxed);
+    }
+}
+
+int
+run_messages_try_write_lock(struct EjRunState *ers)
+{
+    return atomic_exchange_explicit(&ers->msg_update, 1, memory_order_acquire);
+}
+
+void
+run_messages_set(struct EjRunState *ers, struct EjRunMessages *erms)
+{
+    struct EjRunMessages *old = atomic_exchange_explicit(&ers->msg, erms, memory_order_acquire);
+    int expected = 0;
+    while (!atomic_compare_exchange_weak_explicit(&ers->msg_guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+        expected = 0;
+    }
+    atomic_store_explicit(&ers->msg_update, 0, memory_order_release);
+    if (old) {
+        expected = 0;
+        while (!atomic_compare_exchange_weak_explicit(&old->reader_count, &expected, 0, memory_order_release, memory_order_acquire)) {
+            sched_yield();
+            expected = 0;
+        }
+        run_messages_free(old);
+    }
+}

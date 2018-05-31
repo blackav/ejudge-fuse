@@ -196,6 +196,12 @@ ejf_readdir(
             }
         }
     }
+    if (eri->message_count > 0) {
+        if (snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, "messages.txt") < sizeof(entry_path)) {
+            es.st_ino = get_inode(efr->efs, entry_path);
+            filler(buf, "messages.txt", &es, 0);
+        }
+    }
 
     run_info_read_unlock(eri);
     return 0;

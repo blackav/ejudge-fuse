@@ -186,3 +186,17 @@ ejfuse_run_info_text(struct EjRunInfo *eri)
     eri->info_text = text_s;
     eri->info_size = text_z;
 }
+
+void
+ejfuse_run_messages_text(struct EjRunMessages *erms)
+{
+    char *text_s = NULL;
+    size_t text_z = 0;
+    FILE *text_f = open_memstream(&text_s, &text_z);
+
+    fprintf(text_f, "%s", erms->json_text);
+
+    fclose(text_f);
+    erms->text = text_s;
+    erms->size = text_z;
+}

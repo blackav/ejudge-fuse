@@ -607,6 +607,39 @@ run_source_maybe_update(
     run_source_set(ers, ert);
 }
 
+void
+run_messages_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunState *ers,
+        long long current_time_us)
+{
+    int update_needed = 0;
+    struct EjRunMessages *erms = run_messages_read_lock(ers);
+    if (erms && erms->ok) {
+        if (erms->recheck_time_us > 0 && current_time_us >= erms->recheck_time_us) {
+            update_needed = 1;
+        }
+    } else {
+        update_needed = 1;
+        if (erms && erms->recheck_time_us > 0 && current_time_us < erms->recheck_time_us) {
+            update_needed = 0;
+        }
+    }
+    run_messages_read_unlock(erms);
+    if (!update_needed) return;
+
+    if (run_messages_try_write_lock(ers)) return;
+
+    struct EjSessionValue esv;
+    if (!contest_state_copy_session(ecs, &esv)) return;
+
+    erms = run_messages_create(ers->run_id);
+    ejudge_client_run_messages_request(efs, ecs, &esv, ers->run_id, current_time_us, erms);
+    ejfuse_run_messages_text(erms);
+    run_messages_set(ers, erms);
+}
+
 unsigned
 get_inode(struct EjFuseState *efs, const char *path)
 {
@@ -708,6 +741,9 @@ recognize_special_file_names(const unsigned char *file_name)
     }
     if (!strncmp(file_name, "source.", 7)) {
         return FILE_NAME_SOURCE;
+    }
+    if (!strcmp(file_name, "messages.txt")) {
+        return FILE_NAME_MESSAGES_TXT;
     }
     return 0;
 }

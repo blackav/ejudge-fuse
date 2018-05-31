@@ -40,6 +40,11 @@ run_source_unlocker(void *ptr)
 {
     run_source_read_unlock((struct EjRunSource *) ptr);
 }
+static void
+run_messages_unlocker(void *ptr)
+{
+    run_messages_read_unlock((struct EjRunMessages *) ptr);
+}
 
 static int
 get_info(
@@ -149,13 +154,47 @@ get_info(
         return 0;
     }
         break;
+    case FILE_NAME_MESSAGES_TXT: {
+        struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+        if (!eri || !eri->ok || eri->message_count <= 0) {
+            run_info_read_unlock(eri);
+            return -ENOENT;
+        }
+        int message_count = eri->message_count;
+        long long run_time_us = eri->run_time_us;
+        run_info_read_unlock(eri);
+        if (p_data) {
+            run_messages_maybe_update(efr->efs, efr->ecs, efr->ers, efr->current_time_us);
+        }
+        struct EjRunMessages *erms = run_messages_read_lock(efr->ers);
+        if (!erms && !p_data) {
+            if (p_size) *p_size = message_count;
+            if (p_mtime_us) *p_mtime_us = run_time_us;
+            return 0;
+        }
+        if (!erms->ok) {
+            run_messages_read_unlock(erms);
+            return -ENOENT;
+        }
+        if (p_data) *p_data = erms->text;
+        if (p_size) *p_size = erms->size;
+        if (p_mtime_us) *p_mtime_us = erms->latest_time_us;
+        if (!p_data) {
+            run_messages_read_unlock(erms);
+        } else {
+            *p_unlocker = run_messages_unlocker;
+            *p_unlock_data = erms;
+        }
+        return 0;
+    }
+        break;
     default:
         return -ENOENT;
     }
     return 0;
 }
 
-// INFO info.json compiler.txt valuer.txt source*
+// INFO info.json compiler.txt valuer.txt messages.txt source*
 static int
 ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
 {

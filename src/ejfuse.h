@@ -215,6 +215,12 @@ run_source_maybe_update(
         struct EjContestState *ecs,
         struct EjRunState *ers,
         long long current_time_us);
+void
+run_messages_maybe_update(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        struct EjRunState *ers,
+        long long current_time_us);
 
 /* special file names */
 enum
@@ -224,14 +230,18 @@ enum
     FILE_NAME_STATEMENT_HTML,
     FILE_NAME_COMPILER_TXT,
     FILE_NAME_VALUER_TXT,
-    FILE_NAME_SOURCE
+    FILE_NAME_SOURCE,
+    FILE_NAME_MESSAGES_TXT
 };
 
 struct EjContestInfo;
 struct EjProblemInfo;
 struct EjRunInfo;
+struct EjRunMessages;
+
 void ejfuse_contest_info_text(struct EjContestInfo *eci);
 void ejfuse_problem_info_text(struct EjProblemInfo *epi);
 void ejfuse_run_info_text(struct EjRunInfo *eri);
+void ejfuse_run_messages_text(struct EjRunMessages *erms);
 
 unsigned char *fix_name(unsigned char *str);

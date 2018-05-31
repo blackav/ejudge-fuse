@@ -315,6 +315,7 @@ struct EjRunInfo
     int passed_tests;
     int score;
     unsigned char *score_str;
+    int message_count;
 
     unsigned char is_imported;
     unsigned char is_hidden;
@@ -358,6 +359,43 @@ struct EjRunSource
     size_t size;
 };
 
+struct EjRunMessage
+{
+    int clar_id;
+    long long time_us;
+    int from;
+    int to;
+    unsigned char *subject;
+
+    unsigned char *data;
+    size_t size;
+};
+
+struct EjRunMessages
+{
+    _Atomic int reader_count;
+
+    int run_id;
+
+    _Bool ok;
+    long long recheck_time_us;
+    unsigned char *log_s;
+    long long update_time_us;
+
+    unsigned char *json_text;
+    size_t json_size;
+
+    unsigned char *text;
+    size_t size;
+
+    time_t server_time;
+
+    long long latest_time_us;
+
+    int count;
+    struct EjRunMessage *messages;
+};
+
 // run state is a container for updateable run structures
 struct EjRunState
 {
@@ -370,6 +408,10 @@ struct EjRunState
     _Atomic int src_guard;
     struct EjRunSource *src;
     _Atomic _Bool src_update;
+
+    _Atomic int msg_guard;
+    struct EjRunMessages *msg;
+    _Atomic _Bool msg_update;
 };
 
 struct EjProblemStates;
@@ -495,3 +537,11 @@ struct EjRunSource *run_source_read_lock(struct EjRunState *ers);
 void run_source_read_unlock(struct EjRunSource *ert);
 int run_source_try_write_lock(struct EjRunState *ers);
 void run_source_set(struct EjRunState *ers, struct EjRunSource *eri);
+
+struct EjRunMessages *run_messages_create(int run_id);
+void run_messages_free(struct EjRunMessages *erms);
+
+struct EjRunMessages *run_messages_read_lock(struct EjRunState *ers);
+void run_messages_read_unlock(struct EjRunMessages *erms);
+int run_messages_try_write_lock(struct EjRunState *ers);
+void run_messages_set(struct EjRunState *ers, struct EjRunMessages *eri);

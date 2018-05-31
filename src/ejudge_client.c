@@ -998,7 +998,7 @@ ejudge_client_run_source_request(
     ert->size = resp_z;
 
     // normal return
-    //contest_log_format(efs, ecs, "problem-statement-json", 1, NULL);
+    //contest_log_format(efs, ecs, "download-run", 1, NULL);
 
     ert->log_s = NULL;
     ert->update_time_us = current_time_us;
@@ -1024,5 +1024,100 @@ failed:
     ert->log_s = err_s; err_s = NULL;
     ert->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
     contest_log_format(current_time_us, ecs, "download-run", 0, NULL);
+    goto cleanup;
+}
+
+void
+ejudge_client_run_messages_request(
+        struct EjFuseState *efs,
+        struct EjContestState *ecs,
+        const struct EjSessionValue *esv,
+        int run_id,
+        long long current_time_us,
+        struct EjRunMessages *erms) // output
+{
+    char *err_s = NULL;
+    size_t err_z = 0;
+    FILE *err_f = NULL;
+    CURL *curl = NULL;
+    char *url_s = NULL;
+    char *resp_s = NULL;
+    CURLcode res = 0;
+
+    err_f = open_memstream(&err_s, &err_z);
+    curl = curl_easy_init();
+    if (!curl) {
+        fprintf(err_f, "curl_easy_init failed\n");
+        goto failed;
+    }
+
+    {
+        size_t url_z = 0;
+        FILE *url_f = open_memstream(&url_s, &url_z);
+        char *s1, *s2;
+        fprintf(url_f, "%sclient/run-messages-json?SID=%s&EJSID=%s&run_id=%d&json=1&mode=1",
+                efs->url,
+                (s1 = curl_easy_escape(curl, esv->session_id, 0)),
+                (s2 = curl_easy_escape(curl, esv->client_key, 0)),
+                run_id);
+        free(s1);
+        free(s2);
+        fclose(url_f);
+    }
+
+    {
+        size_t resp_z = 0;
+        FILE *resp_f = open_memstream(&resp_s, &resp_z);
+        curl_easy_setopt(curl, CURLOPT_AUTOREFERER, 1);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+        curl_easy_setopt(curl, CURLOPT_URL, url_s);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, resp_f);
+        res = curl_easy_perform(curl);
+        fclose(resp_f);
+        if (strlen(resp_s) != resp_z) {
+            fprintf(err_f, "server reply contains NUL byte\n");
+            goto failed;
+        }
+    }
+    if (res != CURLE_OK) {
+        fprintf(err_f, "request failed: %s\n", curl_easy_strerror(res));
+        goto failed;
+    }
+
+    fprintf(stdout, ">%s<\n", resp_s);
+    erms->json_text = strdup(resp_s);
+    erms->json_size = strlen(resp_s);
+
+    if (ejudge_json_parse_run_messages(err_f, resp_s, erms) < 0) {
+        goto failed;
+    }
+
+    // normal return
+    //contest_log_format(efs, ecs, "run-messages-json", 1, NULL);
+    erms->log_s = NULL;
+    erms->update_time_us = current_time_us;
+    erms->recheck_time_us = current_time_us + EJFUSE_CACHING_TIME;
+    erms->ok = 1;
+
+cleanup:
+    free(resp_s);
+    free(url_s);
+    if (curl) {
+        curl_easy_cleanup(curl);
+    }
+    if (err_f) {
+        fclose(err_f);
+    }
+    free(err_s);
+    return;
+
+failed:
+    if (err_f) {
+        fclose(err_f); err_f = NULL;
+    }
+    erms->log_s = err_s; err_s = NULL;
+    erms->recheck_time_us = current_time_us + EJFUSE_RETRY_TIME;
+    contest_log_format(current_time_us, ecs, "run-messages-json", 0, NULL);
     goto cleanup;
 }

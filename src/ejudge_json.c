@@ -1130,6 +1130,11 @@ ejudge_json_parse_run_info(
       if (jj && jj->type == cJSON_True) {
           epi->is_report_available = 1;
       }
+      jj = cJSON_GetObjectItem(jrun, "message_count");
+      if (jj) {
+          if (jj->type != cJSON_Number) goto invalid_json;
+          epi->message_count = jj->valueint;
+      }
 
       cJSON *jco = cJSON_GetObjectItem(jresult, "compiler_output");
       if (jco) {
@@ -1197,6 +1202,88 @@ ejudge_json_parse_run_info(
         goto invalid_json;
     }
     retval = 0;
+
+cleanup:
+    if (root) cJSON_Delete(root);
+    return retval;
+
+invalid_json:
+    fprintf(err_f, "invalid JSON response: <%s>\n", resp_s);
+failed:
+    goto cleanup;
+}
+
+int
+ejudge_json_parse_run_messages(
+        FILE *err_f,
+        const unsigned char *resp_s,
+        struct EjRunMessages *erms) // out
+{
+    int retval = -1;
+    cJSON *root = NULL;
+    long long latest_time_us = 0;
+
+    root = cJSON_Parse(resp_s);
+    if (!root) {
+        fprintf(err_f, "json parse failed\n");
+        goto failed;
+    }
+    if (root->type != cJSON_Object) {
+        goto invalid_json;
+    }
+    cJSON *jok = cJSON_GetObjectItem(root, "ok");
+    if (!jok) {
+        goto invalid_json;
+    }
+
+    if (jok->type == cJSON_True) {
+        cJSON *jresult = cJSON_GetObjectItem(root, "result");
+        if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
+
+        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        if (!jj || jj->type != cJSON_Number) goto invalid_json;
+        erms->server_time = jj->valueint;
+
+        cJSON *jms = cJSON_GetObjectItem(jresult, "messages");
+        if (jms) {
+            if (jms->type != cJSON_Array) goto invalid_json;
+            int count = cJSON_GetArraySize(jms);
+            erms->count = count;
+            if (count > 0) {
+                erms->messages = calloc(count, sizeof(erms->messages[0]));
+                for (int i = 0; i < count; ++i) {
+                    cJSON *jm = cJSON_GetArrayItem(jms, i);
+                    if (!jm || jm->type != cJSON_Object) goto invalid_json;
+                    struct EjRunMessage *erm = &erms->messages[i];
+
+                    jj = cJSON_GetObjectItem(jm, "clar_id");
+                    if (!jj || jj->type != cJSON_Number || jj->valueint != jj->valuedouble) goto invalid_json;
+                    erm->clar_id = jj->valueint;
+                    jj = cJSON_GetObjectItem(jm, "time_us");
+                    if (!jj || jj->type != cJSON_Number) goto invalid_json;
+                    erm->time_us = jj->valuedouble;
+                    if (erm->time_us > latest_time_us) latest_time_us = erm->time_us;
+                    jj = cJSON_GetObjectItem(jm, "from");
+                    if (!jj || jj->type != cJSON_Number || jj->valueint != jj->valuedouble) goto invalid_json;
+                    erm->from = jj->valueint;
+                    jj = cJSON_GetObjectItem(jm, "to");
+                    if (!jj || jj->type != cJSON_Number || jj->valueint != jj->valuedouble) goto invalid_json;
+                    erm->to = jj->valueint;
+                    jj = cJSON_GetObjectItem(jm, "subject");
+                    if (!jj || jj->type != cJSON_String) goto invalid_json;
+                    erm->subject = strdup(jj->valuestring);
+                    if (parse_json_content(cJSON_GetObjectItem(jj, "content"), &erm->data, &erm->size) < 0) goto invalid_json;
+                }
+            }
+        }
+    } else if (jok->type == cJSON_False) {
+        fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
+        goto failed;
+    } else {
+        goto invalid_json;
+    }
+    retval = 0;
+    erms->latest_time_us = latest_time_us;
 
 cleanup:
     if (root) cJSON_Delete(root);
