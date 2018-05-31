@@ -396,6 +396,41 @@ struct EjRunMessages
     struct EjRunMessage *messages;
 };
 
+struct EjRunTestData
+{
+    _Atomic int reader_count;
+
+    unsigned char *data;
+    size_t size;
+};
+
+struct EjRunTestPart
+{
+    _Atomic int guard;
+    struct EjRunTestData *info;
+    _Atomic _Bool update;
+};
+
+enum
+{
+    TESTING_REPORT_INPUT,
+    TESTING_REPORT_OUTPUT,
+    TESTING_REPORT_CORRECT,
+    TESTING_REPORT_ERROR,
+    TESTING_REPORT_CHECKER,
+
+    TESTING_REPORT_LAST
+};
+
+struct EjRunTest
+{
+    int num;
+
+    struct EjRunTestPart parts[TESTING_REPORT_LAST];
+};
+
+struct EjRunTests;
+
 // run state is a container for updateable run structures
 struct EjRunState
 {
@@ -412,6 +447,8 @@ struct EjRunState
     _Atomic int msg_guard;
     struct EjRunMessages *msg;
     _Atomic _Bool msg_update;
+
+    struct EjRunTests *tests;
 };
 
 struct EjProblemStates;
@@ -545,3 +582,18 @@ struct EjRunMessages *run_messages_read_lock(struct EjRunState *ers);
 void run_messages_read_unlock(struct EjRunMessages *erms);
 int run_messages_try_write_lock(struct EjRunState *ers);
 void run_messages_set(struct EjRunState *ers, struct EjRunMessages *eri);
+
+struct EjRunTest *run_test_create(int num);
+void run_test_free(struct EjRunTest *ert);
+
+struct EjRunTests *run_tests_create(void);
+void run_tests_free(struct EjRunTests *erts);
+struct EjRunTest *run_tests_get(struct EjRunTests *erts, int num);
+
+struct EjRunTestData *run_test_data_create(void);
+void run_test_data_free(struct EjRunTestData *ertd);
+
+struct EjRunTestData *run_test_data_read_lock(struct EjRunTest *ert, int index);
+void run_test_data_read_unlock(struct EjRunTestData *ertd);
+int run_test_data_try_write_lock(struct EjRunTest *ert, int index);
+void run_test_data_set(struct EjRunTest *ert, int index, struct EjRunTestData *ertd);

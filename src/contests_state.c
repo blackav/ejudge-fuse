@@ -53,6 +53,16 @@ struct EjRunStates
     struct EjRunState **runs;
 };
 
+struct EjRunTests
+{
+    pthread_rwlock_t rwl;
+
+    // indexed by (num - 1)
+    int reserved;
+    int size;
+    struct EjRunTest **tests;
+};
+
 struct EjProblemSubmits
 {
     pthread_rwlock_t rwl;
@@ -686,6 +696,7 @@ run_state_create(int run_id)
 {
     struct EjRunState *ejr = calloc(1, sizeof(*ejr));
     ejr->run_id = run_id;
+    ejr->tests = run_tests_create();
     return ejr;
 }
 
@@ -693,6 +704,7 @@ void
 run_state_free(struct EjRunState *ejr)
 {
     if (ejr) {
+        run_tests_free(ejr->tests);
         free(ejr);
     }
 }
@@ -1163,5 +1175,142 @@ run_messages_set(struct EjRunState *ers, struct EjRunMessages *erms)
             expected = 0;
         }
         run_messages_free(old);
+    }
+}
+
+struct EjRunTests *
+run_tests_create(void)
+{
+    struct EjRunTests *erts = calloc(1, sizeof(*erts));
+    pthread_rwlock_init(&erts->rwl, NULL);
+    return erts;
+}
+
+void
+run_tests_free(struct EjRunTests *erts)
+{
+    if (erts) {
+        pthread_rwlock_destroy(&erts->rwl);
+        for (int i = 0; i < erts->size; ++i) {
+            run_test_free(erts->tests[i]);
+        }
+        free(erts);
+    }
+}
+
+struct EjRunTest *
+run_tests_get(struct EjRunTests *erts, int num)
+{
+    struct EjRunTest *ert = NULL;
+    pthread_rwlock_rdlock(&erts->rwl);
+    if (num < 1 || num > 10000) {
+        pthread_rwlock_unlock(&erts->rwl);
+        return NULL;
+    }
+    if (num <= erts->size) {
+        ert = erts->tests[num - 1];
+    }
+    pthread_rwlock_unlock(&erts->rwl);
+    if (!ert) {
+        pthread_rwlock_wrlock(&erts->rwl);
+        if (num > erts->size) {
+            size_t new_size = erts->size;
+            if (!new_size) new_size = 16;
+            while (num > new_size) new_size *= 2;
+            struct EjRunTest **new_tests = calloc(new_size, sizeof(new_tests[0]));
+            if (erts->size > 0) {
+                memcpy(new_tests, erts->tests, erts->size * sizeof(erts->tests[0]));
+            }
+            free(erts->tests);
+            erts->tests = new_tests;
+            erts->size = new_size;
+        }
+        ert = erts->tests[num - 1];
+        if (!ert) {
+            ert = erts->tests[num - 1] = run_test_create(num);
+        }
+        pthread_rwlock_unlock(&erts->rwl);
+    }
+    return ert;
+}
+
+struct EjRunTest *
+run_test_create(int num)
+{
+    return NULL;
+}
+
+void
+run_test_free(struct EjRunTest *ert)
+{
+    if (ert) {
+        free(ert);
+    }
+}
+
+struct EjRunTestData *
+run_test_data_create(void)
+{
+    struct EjRunTestData *ertd = calloc(1, sizeof(*ertd));
+    return ertd;
+}
+
+void
+run_test_data_free(struct EjRunTestData *ertd)
+{
+    if (ertd) {
+        free(ertd->data);
+        free(ertd);
+    }
+}
+
+struct EjRunTestData *
+run_test_data_read_lock(struct EjRunTest *ert, int index)
+{
+    if (index < 0 || index >= TESTING_REPORT_LAST) return NULL;
+    struct EjRunTestPart *ertp = &ert->parts[index];
+    atomic_fetch_add_explicit(&ertp->guard, 1, memory_order_acquire);
+    struct EjRunTestData *ertd = atomic_load_explicit(&ertp->info, memory_order_relaxed);
+    if (ertd) {
+        atomic_fetch_add_explicit(&ertd->reader_count, 1, memory_order_relaxed);
+    }
+    atomic_fetch_sub_explicit(&ertp->guard, 1, memory_order_release);
+    return ertd;
+}
+
+void
+run_test_data_read_unlock(struct EjRunTestData *ertd)
+{
+    if (ertd) {
+        atomic_fetch_sub_explicit(&ertd->reader_count, 1, memory_order_relaxed);
+    }
+}
+
+int
+run_test_data_try_write_lock(struct EjRunTest *ert, int index)
+{
+    if (index < 0 || index >= TESTING_REPORT_LAST) return 1;
+    struct EjRunTestPart *ertp = &ert->parts[index];
+    return atomic_exchange_explicit(&ertp->update, 1, memory_order_acquire);
+}
+
+void
+run_test_data_set(struct EjRunTest *ert, int index, struct EjRunTestData *ertd)
+{
+    if (index < 0 || index >= TESTING_REPORT_LAST) return;
+    struct EjRunTestPart *ertp = &ert->parts[index];
+    struct EjRunTestData *old = atomic_exchange_explicit(&ertp->info, ertd, memory_order_acquire);
+    int expected = 0;
+    while (!atomic_compare_exchange_weak_explicit(&ertp->guard, &expected, 0, memory_order_release, memory_order_acquire)) {
+        expected = 0;
+    }
+    atomic_store_explicit(&ertp->update, 0, memory_order_release);
+    if (old) {
+        expected = 0;
+        while (!atomic_compare_exchange_weak_explicit(&old->reader_count, &expected, 0, memory_order_release, memory_order_acquire)) {
+            sched_yield();
+            expected = 0;
+        }
+        run_test_data_free(old);
     }
 }
