@@ -272,6 +272,18 @@ struct EjProblemState
     struct EjProblemSubmits *submits;
 };
 
+enum
+{
+    TESTING_REPORT_INPUT,
+    TESTING_REPORT_OUTPUT,
+    TESTING_REPORT_CORRECT,
+    TESTING_REPORT_ERROR,
+    TESTING_REPORT_CHECKER,
+    TESTING_REPORT_ARGS,
+
+    TESTING_REPORT_LAST
+};
+
 struct EjRunInfoTestResult
 {
     int num;
@@ -417,18 +429,6 @@ struct EjRunTestPart
     _Atomic int guard;
     struct EjRunTestData *info;
     _Atomic _Bool update;
-};
-
-enum
-{
-    TESTING_REPORT_INPUT,
-    TESTING_REPORT_OUTPUT,
-    TESTING_REPORT_CORRECT,
-    TESTING_REPORT_ERROR,
-    TESTING_REPORT_CHECKER,
-    TESTING_REPORT_ARGS,
-
-    TESTING_REPORT_LAST
 };
 
 struct EjRunTest
