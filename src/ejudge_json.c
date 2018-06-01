@@ -966,6 +966,32 @@ parse_json_content(
     return 1;
 }
 
+static int
+parse_json_brief_test(
+        cJSON *jnode,
+        const unsigned char *name,
+        struct EjRunInfoTestResultData *p_data)
+{
+    if (!jnode) return 0;
+    cJSON *jd = cJSON_GetObjectItem(jnode, name);
+    if (!jd) return 0;
+    if (jd->type != cJSON_Object) return -1;
+
+    cJSON *jj = cJSON_GetObjectItem(jd, "is_too_big");
+    if (jj && jj->type == cJSON_True) p_data->is_too_big = 1;
+
+    jj = cJSON_GetObjectItem(jd, "is_binary");
+    if (jj && jj->type == cJSON_True) p_data->is_binary = 1;
+
+    jj = cJSON_GetObjectItem(jd, "size");
+    if (jj) {
+        if (jj->type != cJSON_Number || jj->valueint != jj->valuedouble) return -1;
+        p_data->size = jj->valueint;
+    }
+    p_data->is_defined = 1;
+    return 1;
+}
+
 int
 ejudge_json_parse_run_info(
         FILE *err_f,
@@ -1196,6 +1222,13 @@ ejudge_json_parse_run_info(
                           et->is_visibility_full = 1;
                           eri->is_test_available = 1;
                       }
+
+                      if (parse_json_brief_test(jtest, "args", &et->data[TESTING_REPORT_ARGS]) < 0) goto invalid_json;
+                      if (parse_json_brief_test(jtest, "input", &et->data[TESTING_REPORT_INPUT]) < 0) goto invalid_json;
+                      if (parse_json_brief_test(jtest, "output", &et->data[TESTING_REPORT_OUTPUT]) < 0) goto invalid_json;
+                      if (parse_json_brief_test(jtest, "correct", &et->data[TESTING_REPORT_CORRECT]) < 0) goto invalid_json;
+                      if (parse_json_brief_test(jtest, "error", &et->data[TESTING_REPORT_ERROR]) < 0) goto invalid_json;
+                      if (parse_json_brief_test(jtest, "checker", &et->data[TESTING_REPORT_CHECKER]) < 0) goto invalid_json;
                   }
               }
           }

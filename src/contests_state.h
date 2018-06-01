@@ -284,6 +284,14 @@ enum
     TESTING_REPORT_LAST
 };
 
+struct EjRunInfoTestResultData
+{
+    size_t size;
+    unsigned char is_defined;
+    unsigned char is_too_big;
+    unsigned char is_binary;
+};
+
 struct EjRunInfoTestResult
 {
     int num;
@@ -293,6 +301,7 @@ struct EjRunInfoTestResult
     int max_score;
     unsigned char is_visibility_exists;
     unsigned char is_visibility_full;
+    struct EjRunInfoTestResultData data[TESTING_REPORT_LAST];
 };
 
 struct EjRunInfo

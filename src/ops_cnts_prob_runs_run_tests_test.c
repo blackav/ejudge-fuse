@@ -117,6 +117,68 @@ ejf_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_file_inf
     return 0;
 }
 
+static const unsigned char * const testing_info_file_names[] =
+{
+    [TESTING_REPORT_INPUT] = "input",
+    [TESTING_REPORT_OUTPUT] = "output",
+    [TESTING_REPORT_CORRECT] = "correct",
+    [TESTING_REPORT_ERROR] = "error",
+    [TESTING_REPORT_CHECKER] = "checker",
+    [TESTING_REPORT_ARGS] = "args",
+};
+
+static int
+ejf_readdir(
+        struct EjFuseRequest *efr,
+        const char *path,
+        void *buf,
+        fuse_fill_dir_t filler,
+        off_t offset,
+        struct fuse_file_info *ffi)
+{
+    int retval = -EIO;
+    struct EjFuseState *efs = efr->efs;
+
+    struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+    if (!eri || !eri->ok || !eri->is_test_available) {
+        goto done;
+    }
+    struct EjRunInfoTestResult *eritr = run_info_get_test_result_unlocked(eri, efr->num);
+    if (!eritr || !eritr->is_visibility_full) {
+        goto done;
+    }
+
+    unsigned char ddot_path[PATH_MAX];
+    if (snprintf(ddot_path, sizeof(ddot_path), "/%d/problems/%d/runs/%d/tests", efr->contest_id, efr->prob_id, efr->run_id) >= sizeof(ddot_path)) {
+        goto done;
+    }
+    unsigned char dot_path[PATH_MAX];
+    if (snprintf(dot_path, sizeof(dot_path), "%s/%d", ddot_path, efr->num) >= sizeof(dot_path)) {
+        goto done;
+    }
+    struct stat es;
+    memset(&es, 0, sizeof(es));
+    es.st_ino = get_inode(efs, dot_path);
+    filler(buf, ".", &es, 0);
+    es.st_ino = get_inode(efs, ddot_path);
+    filler(buf, "..", &es, 0);
+
+    for (int i = 0; i < TESTING_REPORT_LAST; ++i) {
+        if (eritr->data[i].is_defined) {
+            unsigned char entry_path[PATH_MAX];
+            if (snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, testing_info_file_names[i]) < sizeof(entry_path)) {
+                es.st_ino = get_inode(efs, entry_path);
+                filler(buf, testing_info_file_names[i], &es, 0);
+            }
+        }
+    }
+    retval = 0;
+
+done:
+    run_info_read_unlock(eri);
+    return retval;
+}
+
 const struct EjFuseOperations ejfuse_contest_problem_runs_run_tests_test_operations =
 {
     ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
@@ -143,7 +205,7 @@ const struct EjFuseOperations ejfuse_contest_problem_runs_run_tests_test_operati
     ejf_generic_listxattr, //int (*listxattr)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_removexattr, //int (*removexattr)(struct EjFuseRequest *, const char *, const char *);
     ejf_opendir, //int (*opendir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //ejf_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
+    ejf_readdir, //ejf_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
     ejf_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
     ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
