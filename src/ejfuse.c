@@ -859,7 +859,11 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
     if (!p2) {
         efr->file_name = p1 + 1;
         efr->file_name_code = recognize_special_file_names(efr->file_name);
-        efr->ops = &ejfuse_contest_problem_runs_run_files_operations;
+        if (efr->file_name_code == FILE_NAME_TESTS) {
+            efr->ops = &ejfuse_contest_problem_runs_run_tests_operations;
+        } else {
+            efr->ops = &ejfuse_contest_problem_runs_run_files_operations;
+        }
         return 0;
     }
 
