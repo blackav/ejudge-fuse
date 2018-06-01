@@ -970,7 +970,7 @@ int
 ejudge_json_parse_run_info(
         FILE *err_f,
         const unsigned char *resp_s,
-        struct EjRunInfo *epi) // out
+        struct EjRunInfo *eri) // out
 {
     int retval = -1;
     cJSON *root = NULL;
@@ -994,7 +994,7 @@ ejudge_json_parse_run_info(
 
       cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
       if (!jj || jj->type != cJSON_Number) goto invalid_json;
-      epi->server_time = jj->valueint;
+      eri->server_time = jj->valueint;
 
       cJSON *jrun = cJSON_GetObjectItem(jresult, "run");
       if (!jrun || jrun->type != cJSON_Object) goto invalid_json;
@@ -1004,142 +1004,142 @@ ejudge_json_parse_run_info(
 
       jj = cJSON_GetObjectItem(jrun, "prob_id");
       if (!jj || jj->type != cJSON_Number) goto invalid_json;
-      epi->prob_id = jj->valueint;
+      eri->prob_id = jj->valueint;
 
       jj = cJSON_GetObjectItem(jrun, "run_time_us");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->run_time_us = jj->valuedouble;
+        eri->run_time_us = jj->valuedouble;
       }
 
       jj = cJSON_GetObjectItem(jrun, "run_time");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->run_time = jj->valueint;
+        eri->run_time = jj->valueint;
       }
 
       jj = cJSON_GetObjectItem(jrun, "duration");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->duration = jj->valueint;
+        eri->duration = jj->valueint;
       }
 
       jj = cJSON_GetObjectItem(jrun, "lang_id");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->lang_id = jj->valueint;
+        eri->lang_id = jj->valueint;
       }
 
       jj = cJSON_GetObjectItem(jrun, "user_id");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->user_id = jj->valueint;
+        eri->user_id = jj->valueint;
       }
 
       jj = cJSON_GetObjectItem(jrun, "size");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->size = jj->valueint;
+        eri->size = jj->valueint;
       }
 
       jj = cJSON_GetObjectItem(jrun, "status");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->status = jj->valueint;
+        eri->status = jj->valueint;
       }
 
       jj = cJSON_GetObjectItem(jrun, "is_imported");
       if (jj && jj->type == cJSON_True) {
-          epi->is_imported = 1;
+          eri->is_imported = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_hidden");
       if (jj && jj->type == cJSON_True) {
-          epi->is_hidden = 1;
+          eri->is_hidden = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_with_duration");
       if (jj && jj->type == cJSON_True) {
-          epi->is_with_duration = 1;
+          eri->is_with_duration = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_standard_problem");
       if (jj && jj->type == cJSON_True) {
-          epi->is_standard_problem = 1;
+          eri->is_standard_problem = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_minimal_report");
       if (jj && jj->type == cJSON_True) {
-          epi->is_minimal_report = 1;
+          eri->is_minimal_report = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_with_effective_time");
       if (jj && jj->type == cJSON_True) {
-          epi->is_with_effective_time = 1;
+          eri->is_with_effective_time = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "effective_time");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->effective_time = jj->valueint;
+        eri->effective_time = jj->valueint;
       }
       jj = cJSON_GetObjectItem(jrun, "is_src_enabled");
       if (jj && jj->type == cJSON_True) {
-          epi->is_src_enabled = 1;
+          eri->is_src_enabled = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "src_sfx");
       if (jj) {
         if (jj->type != cJSON_String) goto invalid_json;
-        epi->src_sfx = strdup(jj->valuestring);
+        eri->src_sfx = strdup(jj->valuestring);
       }
       jj = cJSON_GetObjectItem(jrun, "is_report_enabled");
       if (jj && jj->type == cJSON_True) {
-          epi->is_report_enabled = 1;
+          eri->is_report_enabled = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_failed_test_available");
       if (jj && jj->type == cJSON_True) {
-          epi->is_failed_test_available = 1;
+          eri->is_failed_test_available = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "failed_test");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->failed_test = jj->valueint;
+        eri->failed_test = jj->valueint;
       }
       jj = cJSON_GetObjectItem(jrun, "is_passed_tests_available");
       if (jj && jj->type == cJSON_True) {
-          epi->is_passed_tests_available = 1;
+          eri->is_passed_tests_available = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "passed_tests");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->passed_tests = jj->valueint;
+        eri->passed_tests = jj->valueint;
       }
       jj = cJSON_GetObjectItem(jrun, "is_score_available");
       if (jj && jj->type == cJSON_True) {
-          epi->is_score_available = 1;
+          eri->is_score_available = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "score");
       if (jj) {
         if (jj->type != cJSON_Number) goto invalid_json;
-        epi->score = jj->valueint;
+        eri->score = jj->valueint;
       }
       jj = cJSON_GetObjectItem(jrun, "score_str");
       if (jj) {
         if (jj->type != cJSON_String) goto invalid_json;
-        epi->score_str = strdup(jj->valuestring);
+        eri->score_str = strdup(jj->valuestring);
       }
       jj = cJSON_GetObjectItem(jrun, "is_compiler_output_available");
       if (jj && jj->type == cJSON_True) {
-          epi->is_compiler_output_available = 1;
+          eri->is_compiler_output_available = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "is_report_available");
       if (jj && jj->type == cJSON_True) {
-          epi->is_report_available = 1;
+          eri->is_report_available = 1;
       }
       jj = cJSON_GetObjectItem(jrun, "message_count");
       if (jj) {
           if (jj->type != cJSON_Number) goto invalid_json;
-          epi->message_count = jj->valueint;
+          eri->message_count = jj->valueint;
       }
 
       cJSON *jco = cJSON_GetObjectItem(jresult, "compiler_output");
       if (jco) {
           if (jco->type != cJSON_Object) goto invalid_json;
-          if (parse_json_content(cJSON_GetObjectItem(jco, "content"), &epi->compiler_text, &epi->compiler_size) < 0) goto invalid_json;
+          if (parse_json_content(cJSON_GetObjectItem(jco, "content"), &eri->compiler_text, &eri->compiler_size) < 0) goto invalid_json;
       }
 
       cJSON *jtr = cJSON_GetObjectItem(jresult, "testing_report");
@@ -1149,19 +1149,19 @@ ejudge_json_parse_run_info(
           jj = cJSON_GetObjectItem(jtr, "valuer_comment");
           if (jj) {
               if (jj->type != cJSON_Object) goto invalid_json;
-              if (parse_json_content(cJSON_GetObjectItem(jj, "content"), &epi->valuer_text, &epi->valuer_size) < 0) goto invalid_json;
+              if (parse_json_content(cJSON_GetObjectItem(jj, "content"), &eri->valuer_text, &eri->valuer_size) < 0) goto invalid_json;
           }
 
           cJSON *jtests = cJSON_GetObjectItem(jtr, "tests");
           if (jtests) {
               if (jtests->type != cJSON_Array) goto invalid_json;
               int count = cJSON_GetArraySize(jtests);
-              epi->test_count = count;
-              epi->tests = calloc(count, sizeof(epi->tests[0]));
-              if (!epi->tests) goto invalid_json;
+              eri->test_count = count;
+              eri->tests = calloc(count, sizeof(eri->tests[0]));
+              if (!eri->tests) goto invalid_json;
               for (int i = 0; i < count; ++i) {
                   cJSON *jtest = cJSON_GetArrayItem(jtests, i);
-                  struct EjRunInfoTestResult *et = &epi->tests[i];
+                  struct EjRunInfoTestResult *et = &eri->tests[i];
                   if (!jtest || jtest->type != cJSON_Object) goto invalid_json;
 
                   jj = cJSON_GetObjectItem(jtest, "num");
