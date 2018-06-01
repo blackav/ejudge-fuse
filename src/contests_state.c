@@ -1249,7 +1249,8 @@ run_tests_get(struct EjRunTests *erts, int num)
 struct EjRunTest *
 run_test_create(int num)
 {
-    return NULL;
+    struct EjRunTest *ert = calloc(1, sizeof(*ert));
+    return ert;
 }
 
 void
