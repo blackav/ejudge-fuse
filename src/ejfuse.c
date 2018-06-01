@@ -779,6 +779,9 @@ recognize_special_file_names(const unsigned char *file_name)
     if (!strcmp(file_name, "messages.txt")) {
         return FILE_NAME_MESSAGES_TXT;
     }
+    if (!strcmp(file_name, "tests")) {
+        return FILE_NAME_TESTS;
+    }
     return 0;
 }
 
