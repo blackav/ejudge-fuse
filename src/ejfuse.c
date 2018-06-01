@@ -794,7 +794,7 @@ recognize_special_file_names(const unsigned char *file_name)
 static int
 ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
 {
-    unsigned char run_buf[NAME_MAX + 1];
+    unsigned char name_buf[NAME_MAX + 1];
     if (path[0] != '/') return -ENOENT;
     const char *p1 = strchr(path + 1, '/');
     const char *comma = strchr(path + 1, ',');
@@ -815,10 +815,10 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
     if (len > NAME_MAX) {
         return -ENOENT;
     }
-    memcpy(run_buf, path + 1, len);
-    run_buf[len] = 0;
+    memcpy(name_buf, path + 1, len);
+    name_buf[len] = 0;
 
-    efr->file_name_code = recognize_special_file_names(run_buf);
+    efr->file_name_code = recognize_special_file_names(name_buf);
     if (efr->file_name_code == FILE_NAME_INFO || efr->file_name_code == FILE_NAME_INFO_JSON) {
         if (p1) {
             return -ENOTDIR;
@@ -829,8 +829,8 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
 
     errno = 0;
     char *eptr = NULL;
-    long val = strtol(run_buf, &eptr, 10);
-    if (errno || *eptr || (unsigned char *) eptr == run_buf || val < 0 || (int) val != val) {
+    long val = strtol(name_buf, &eptr, 10);
+    if (errno || *eptr || (unsigned char *) eptr == name_buf || val < 0 || (int) val != val) {
         return -ENOENT;
     }
 
