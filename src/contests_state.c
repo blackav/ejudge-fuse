@@ -1045,6 +1045,18 @@ run_info_set(struct EjRunState *ers, struct EjRunInfo *eri)
     }
 }
 
+struct EjRunInfoTestResult *
+run_info_get_test_result_unlocked(struct EjRunInfo *eri, int num)
+{
+    if (!eri || !eri->ok) return NULL;
+    for (int i = 0; i < eri->test_count; ++i) {
+        if (eri->tests[i].num == num) {
+            return &eri->tests[i];
+        }
+    }
+    return NULL;
+}
+
 struct EjRunSource *
 run_source_create(int run_id)
 {

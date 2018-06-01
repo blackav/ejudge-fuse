@@ -576,6 +576,8 @@ void run_info_read_unlock(struct EjRunInfo *eri);
 int run_info_try_write_lock(struct EjRunState *ers);
 void run_info_set(struct EjRunState *ers, struct EjRunInfo *eri);
 
+struct EjRunInfoTestResult *run_info_get_test_result_unlocked(struct EjRunInfo *eri, int num);
+
 struct EjRunSource *run_source_create(int run_id);
 void run_source_free(struct EjRunSource *ert);
 
