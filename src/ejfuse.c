@@ -868,6 +868,57 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
         return 0;
     }
 
+    len = p2 - p1 - 1;
+    if (len > NAME_MAX) {
+        return -ENOENT;
+    }
+    memcpy(name_buf, p1 + 1, len);
+    name_buf[len] = 0;
+    if (strcmp(name_buf, "tests") != 0) {
+        return -ENOENT;
+    }
+
+    const char *p3 = strchr(p2 + 1, '/');
+    if (!p3) {
+        len = strlen(p2 + 1);
+    } else {
+        return -ENOENT;
+    }
+    if (len > NAME_MAX) {
+        return -ENOENT;
+    }
+    memcpy(name_buf, p2 + 1, len);
+    name_buf[len] = 0;
+
+    errno = 0;
+    eptr = NULL;
+    val = strtol(name_buf, &eptr, 10);
+    if (errno || *eptr || (unsigned char *) eptr == name_buf || val <= 0 || (int) val != val) {
+        return -ENOENT;
+    }
+
+    struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+    if (!eri || !eri->ok || !eri->is_test_available) {
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    struct EjRunInfoTestResult *eritr = run_info_get_test_result_unlocked(eri, val);
+    if (!eritr || !eritr->is_visibility_full) {
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    efr->num = val;
+    if (!(efr->ert = run_tests_get(efr->ers->tests, efr->num))) {
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    run_info_read_unlock(eri);
+
+    if (!p3) {
+        efr->ops = &ejfuse_contest_problem_runs_run_tests_test_operations;
+        return 0;
+    }
+
     return -ENOENT;
 }
 
