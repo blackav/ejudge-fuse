@@ -280,6 +280,7 @@ struct EjRunInfoTestResult
     int score;
     int max_score;
     unsigned char is_visibility_exists;
+    unsigned char is_visibility_full;
 };
 
 struct EjRunInfo
@@ -330,6 +331,8 @@ struct EjRunInfo
     unsigned char is_score_available;
     unsigned char is_compiler_output_available;
     unsigned char is_report_available;
+
+    unsigned char is_test_available;
 
     // compiler output
     unsigned char *compiler_text;

@@ -1191,6 +1191,11 @@ ejudge_json_parse_run_info(
                           if (jj->type != cJSON_Number) goto invalid_json;
                           et->max_score = jj->valueint;
                       }
+                      jj = cJSON_GetObjectItem(jtest, "is_visibility_full");
+                      if (jj && jj->type == cJSON_True) {
+                          et->is_visibility_full = 1;
+                          eri->is_test_available = 1;
+                      }
                   }
               }
           }
