@@ -55,6 +55,7 @@
 #include "ops_cnts_prob_runs_run_files.h"
 #include "ops_cnts_prob_runs_run_tests.h"
 #include "ops_cnts_prob_runs_run_tests_test.h"
+#include "ops_cnts_prob_runs_run_tests_test_files.h"
 
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
