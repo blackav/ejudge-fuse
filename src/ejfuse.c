@@ -883,7 +883,7 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
     if (!p3) {
         len = strlen(p2 + 1);
     } else {
-        return -ENOENT;
+        len = p3 - p2 - 1;
     }
     if (len > NAME_MAX) {
         return -ENOENT;
@@ -917,6 +917,29 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
 
     if (!p3) {
         efr->ops = &ejfuse_contest_problem_runs_run_tests_test_operations;
+        return 0;
+    }
+
+/*
+ * /<CNTS>/problems/<PROB>/runs/RUN-ID/tests/NUM/file
+ *                             ^ path
+ *                                    ^ p1
+ *                                          ^ p2
+ *                                              ^ p3
+ */
+    const char *p4 = strchr(p3 + 1, '/');
+    if (!p4) {
+        len = strlen(p3 + 1);
+        if (len > NAME_MAX) {
+            return -ENOENT;
+        }
+        memcpy(name_buf, p3 + 1, len);
+        name_buf[len] = 0;
+        efr->file_name = p3 + 1;
+        int index = testing_info_parse(name_buf);
+        if (index < 0) return -ENOENT;
+        efr->test_file_index = index;
+        efr->ops = &ejfuse_contest_problem_runs_run_tests_test_files_operations;
         return 0;
     }
 

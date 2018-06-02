@@ -113,6 +113,7 @@ struct EjFuseRequest
     struct EjRunState *ers;
     int num;
     struct EjRunTest *ert;
+    int test_file_index;
 };
 
 struct EjFuseRequest;

@@ -434,6 +434,7 @@ struct EjRunTestData
 
     unsigned char *data;
     size_t size;
+    long long mtime_us;
 };
 
 struct EjRunTestPart

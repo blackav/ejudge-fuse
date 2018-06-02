@@ -24,9 +24,170 @@
 #include "ops_generic.h"
 #include "contests_state.h"
 
+#include <limits.h>
+#include <errno.h>
+#include <string.h>
+
+static int
+ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
+{
+    struct EjFuseState *efs = efr->efs;
+
+    if (efs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+
+    unsigned char fullpath[PATH_MAX];
+    if (snprintf(fullpath, sizeof(fullpath), "/%d/problems/%d/runs/%d/tests/%d/%s",
+                 efr->contest_id, efr->prob_id, efr->run_id, efr->num, efr->file_name) >= sizeof(fullpath)) {
+        return -ENAMETOOLONG;
+    }
+
+    struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+    struct EjRunInfoTestResult *eritr = run_info_get_test_result_unlocked(eri, efr->num);
+    struct EjRunInfoTestResultData *eritrd = &eritr->data[efr->test_file_index];
+    long long mtime_us = 0;
+    mtime_us = eri->run_time_us;
+    if (!eritrd->is_defined) {
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    int perms = 0;
+    if (!eritrd->is_too_big) {
+        perms = EJFUSE_FILE_PERMS;
+    }
+    off_t file_size = eritrd->size;
+    struct EjRunTestData *ertd = run_test_data_read_lock(efr->ert, efr->test_file_index);
+    if (ertd && !ertd->ok) {
+        run_test_data_read_unlock(ertd);
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    if (ertd) {
+        file_size = ertd->size;
+        run_test_data_read_unlock(ertd);
+    }
+    run_info_read_unlock(eri);
+
+    memset(stb, 0, sizeof(*stb));
+
+    stb->st_ino = get_inode(efs, fullpath);
+    stb->st_mode = S_IFREG | perms;
+    stb->st_nlink = 1;
+    stb->st_uid = efs->owner_uid;
+    stb->st_gid = efs->owner_gid;
+    stb->st_size = file_size;
+    long long current_time_us = efr->current_time_us;
+    if (mtime_us <= 0) mtime_us = efs->start_time_us;
+    stb->st_atim.tv_sec = current_time_us / 1000000;
+    stb->st_atim.tv_nsec = (current_time_us % 1000000) * 1000;
+    stb->st_mtim.tv_sec = mtime_us / 1000000;
+    stb->st_mtim.tv_nsec = (mtime_us % 1000000) * 1000;
+    stb->st_ctim.tv_sec = efs->start_time_us / 1000000;
+    stb->st_ctim.tv_nsec = (efs->start_time_us % 1000000) * 1000;
+
+    return 0;
+}
+
+static int
+ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
+{
+    int perms = 0;
+    mode &= 07;
+
+    struct EjRunInfo *eri = run_info_read_lock(efr->ers);
+    struct EjRunInfoTestResult *eritr = run_info_get_test_result_unlocked(eri, efr->num);
+    struct EjRunInfoTestResultData *eritrd = &eritr->data[efr->test_file_index];
+    if (!eritrd->is_defined) {
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    if (!eritrd->is_too_big) {
+        perms = EJFUSE_FILE_PERMS;
+    }
+    struct EjRunTestData *ertd = run_test_data_read_lock(efr->ert, efr->test_file_index);
+    if (ertd && !ertd->ok) {
+        run_test_data_read_unlock(ertd);
+        run_info_read_unlock(eri);
+        return -ENOENT;
+    }
+    if (ertd) {
+        run_test_data_read_unlock(ertd);
+    }
+    run_info_read_unlock(eri);
+
+    if (efr->efs->owner_uid == efr->fx->uid) {
+        perms >>= 6;
+    } else if (efr->efs->owner_gid == efr->fx->gid) {
+        perms >>= 3;
+    } else {
+        // nothing
+    }
+    if (((perms & 07) & mode) == mode) {
+        return 0;
+    } else {
+        return -EPERM;
+    }
+}
+
+static int
+ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    return 0;
+}
+
+static int
+ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
+{
+    /*
+    unsigned char *file_data = NULL;
+    off_t file_size;
+    unlocker_t unlocker = NULL;
+    void *unlock_data = NULL;
+
+    int res = get_info(efr, &file_data, &file_size, NULL, &unlocker, &unlock_data);
+    if (res < 0) return res;
+    unlocker(unlock_data);
+
+    if (efr->efs->owner_uid != efr->fx->uid) {
+        return -EPERM;
+    }
+    if ((ffi->flags & O_ACCMODE) != O_RDONLY) {
+        return -EPERM;
+    }
+    */
+    return 0;
+}
+
+static int
+ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
+{
+    /*
+    unsigned char *file_data = NULL;
+    off_t file_size = 0;
+    unlocker_t unlocker = NULL;
+    void *unlock_data = NULL;
+    int res = get_info(efr, &file_data, &file_size, NULL, &unlocker, &unlock_data);
+    if (res < 0) return res;
+
+    if (!size || offset < 0 || offset >= file_size || (int) size <= 0) {
+        unlocker(unlock_data);
+        return 0;
+    }
+
+    if (file_size - offset < size) {
+        size = file_size - offset;
+    }
+    memcpy(buf, file_data + offset, size);
+    unlocker(unlock_data);
+    return size;
+    */
+    return 0;
+}
+
 const struct EjFuseOperations ejfuse_contest_problem_runs_run_tests_test_files_operations =
 {
-    NULL, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
+    ejf_getattr, //int (*getattr)(struct EjFuseRequest *, const char *, struct stat *);
     ejf_generic_readlink, //int (*readlink)(struct EjFuseRequest *, const char *, char *, size_t);
     ejf_generic_mknod, //int (*mknod)(struct EjFuseRequest *, const char *, mode_t, dev_t);
     ejf_generic_mkdir, //int (*mkdir)(struct EjFuseRequest *, const char *, mode_t);
@@ -38,12 +199,12 @@ const struct EjFuseOperations ejfuse_contest_problem_runs_run_tests_test_files_o
     ejf_generic_chmod, //int (*chmod)(struct EjFuseRequest *, const char *, mode_t);
     ejf_generic_chown, //int (*chown)(struct EjFuseRequest *, const char *, uid_t, gid_t);
     ejf_generic_truncate, //int (*truncate)(struct EjFuseRequest *, const char *, off_t);
-    NULL, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //int (*read)(struct EjFuseRequest *, const char *, char *, size_t, off_t, struct fuse_file_info *);
+    ejf_open, //int (*open)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_read, //int (*read)(struct EjFuseRequest *, const char *, char *, size_t, off_t, struct fuse_file_info *);
     ejf_generic_write, //int (*write)(struct EjFuseRequest *, const char *, const char *, size_t, off_t, struct fuse_file_info *);
     ejf_generic_statfs, //int (*statfs)(struct EjFuseRequest *, const char *, struct statvfs *);
     ejf_generic_flush, //int (*flush)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
-    NULL, //int (*release)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
+    ejf_release, //int (*release)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsync, //int (*fsync)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
     ejf_generic_setxattr, //int (*setxattr)(struct EjFuseRequest *, const char *, const char *, const char *, size_t, int);
     ejf_generic_getxattr, //int (*getxattr)(struct EjFuseRequest *, const char *, const char *, char *, size_t);
@@ -53,7 +214,7 @@ const struct EjFuseOperations ejfuse_contest_problem_runs_run_tests_test_files_o
     ejf_generic_readdir, //int (*readdir)(struct EjFuseRequest *, const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
     ejf_generic_releasedir, //int (*releasedir)(struct EjFuseRequest *, const char *, struct fuse_file_info *);
     ejf_generic_fsyncdir, //int (*fsyncdir)(struct EjFuseRequest *, const char *, int, struct fuse_file_info *);
-    NULL, //int (*access)(struct EjFuseRequest *, const char *, int);
+    ejf_access, //int (*access)(struct EjFuseRequest *, const char *, int);
     ejf_generic_create, //int (*create)(struct EjFuseRequest *, const char *, mode_t, struct fuse_file_info *);
     ejf_generic_ftruncate, //int (*ftruncate)(struct EjFuseRequest *, const char *, off_t, struct fuse_file_info *);
     ejf_generic_fgetattr, //int (*fgetattr)(struct EjFuseRequest *, const char *, struct stat *, struct fuse_file_info *);
