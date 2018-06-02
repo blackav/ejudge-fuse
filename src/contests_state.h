@@ -284,6 +284,9 @@ enum
     TESTING_REPORT_LAST
 };
 
+const unsigned char *testing_info_unparse(int index);
+int testing_info_parse(const unsigned char *str);
+
 struct EjRunInfoTestResultData
 {
     size_t size;

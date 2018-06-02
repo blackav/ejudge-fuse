@@ -1327,3 +1327,35 @@ run_test_data_set(struct EjRunTest *ert, int index, struct EjRunTestData *ertd)
         run_test_data_free(old);
     }
 }
+
+static const unsigned char * const testing_info_file_names[] =
+{
+    [TESTING_REPORT_INPUT] = "input",
+    [TESTING_REPORT_OUTPUT] = "output",
+    [TESTING_REPORT_CORRECT] = "correct",
+    [TESTING_REPORT_ERROR] = "error",
+    [TESTING_REPORT_CHECKER] = "checker",
+    [TESTING_REPORT_ARGS] = "args",
+};
+
+const unsigned char *
+testing_info_unparse(int index)
+{
+    if (index >= 0 && index < TESTING_REPORT_LAST) {
+        return testing_info_file_names[index];
+    }
+    abort();
+    return "";
+}
+
+int
+testing_info_parse(const unsigned char *str)
+{
+    if (!str) return -1;
+    for (int i = 0; i < sizeof(testing_info_file_names) / sizeof(testing_info_file_names[0]); ++i) {
+        if (!strcmp(testing_info_file_names[i], str)) {
+            return i;
+        }
+    }
+    return 0;
+}

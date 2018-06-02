@@ -117,16 +117,6 @@ ejf_releasedir(struct EjFuseRequest *efr, const char *path, struct fuse_file_inf
     return 0;
 }
 
-static const unsigned char * const testing_info_file_names[] =
-{
-    [TESTING_REPORT_INPUT] = "input",
-    [TESTING_REPORT_OUTPUT] = "output",
-    [TESTING_REPORT_CORRECT] = "correct",
-    [TESTING_REPORT_ERROR] = "error",
-    [TESTING_REPORT_CHECKER] = "checker",
-    [TESTING_REPORT_ARGS] = "args",
-};
-
 static int
 ejf_readdir(
         struct EjFuseRequest *efr,
@@ -166,9 +156,10 @@ ejf_readdir(
     for (int i = 0; i < TESTING_REPORT_LAST; ++i) {
         if (eritr->data[i].is_defined) {
             unsigned char entry_path[PATH_MAX];
-            if (snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, testing_info_file_names[i]) < sizeof(entry_path)) {
+            const unsigned char *entry_name = testing_info_unparse(i);
+            if (snprintf(entry_path, sizeof(entry_path), "%s/%s", dot_path, entry_name) < sizeof(entry_path)) {
                 es.st_ino = get_inode(efs, entry_path);
-                filler(buf, testing_info_file_names[i], &es, 0);
+                filler(buf, entry_name, &es, 0);
             }
         }
     }
