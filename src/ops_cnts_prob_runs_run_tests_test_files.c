@@ -139,50 +139,44 @@ ejf_release(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
 static int
 ejf_open(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *ffi)
 {
-    /*
-    unsigned char *file_data = NULL;
-    off_t file_size;
-    unlocker_t unlocker = NULL;
-    void *unlock_data = NULL;
-
-    int res = get_info(efr, &file_data, &file_size, NULL, &unlocker, &unlock_data);
-    if (res < 0) return res;
-    unlocker(unlock_data);
-
     if (efr->efs->owner_uid != efr->fx->uid) {
         return -EPERM;
     }
     if ((ffi->flags & O_ACCMODE) != O_RDONLY) {
         return -EPERM;
     }
-    */
+
+    run_test_data_maybe_update(efr->efs, efr->ecs, efr->ert, efr->run_id, efr->test_file_index, efr->current_time_us);
+    struct EjRunTestData *ertd = run_test_data_read_lock(efr->ert, efr->test_file_index);
+    if (!ertd || !ertd->ok) {
+        run_test_data_read_unlock(ertd);
+        return -ENOENT;
+    }
+
+    run_test_data_read_unlock(ertd);
     return 0;
 }
 
 static int
 ejf_read(struct EjFuseRequest *efr, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *ffi)
 {
-    /*
-    unsigned char *file_data = NULL;
-    off_t file_size = 0;
-    unlocker_t unlocker = NULL;
-    void *unlock_data = NULL;
-    int res = get_info(efr, &file_data, &file_size, NULL, &unlocker, &unlock_data);
-    if (res < 0) return res;
+    int retval = -EIO;
 
-    if (!size || offset < 0 || offset >= file_size || (int) size <= 0) {
-        unlocker(unlock_data);
-        return 0;
+    struct EjRunTestData *ertd = run_test_data_read_lock(efr->ert, efr->test_file_index);
+    if (!ertd->ok) goto done;
+    if (!ertd->size || offset < 0 || offset >= ertd->size || (int) size <= 0) {
+        retval = 0;
+        goto done;
     }
+    if (ertd->size - offset < size) {
+        size = ertd->size - offset;
+    }
+    memcpy(buf, ertd->data + offset, size);
+    retval = size;
 
-    if (file_size - offset < size) {
-        size = file_size - offset;
-    }
-    memcpy(buf, file_data + offset, size);
-    unlocker(unlock_data);
-    return size;
-    */
-    return 0;
+done:
+    run_test_data_read_unlock(ertd);
+    return retval;
 }
 
 const struct EjFuseOperations ejfuse_contest_problem_runs_run_tests_test_files_operations =
