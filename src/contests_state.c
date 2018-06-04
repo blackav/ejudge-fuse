@@ -149,6 +149,7 @@ contest_info_free(struct EjContestInfo *eci)
         free(eci->compilers);
         free(eci->info_json_text);
         free(eci->info_text);
+        free(eci->name);
         free(eci);
     }
 }

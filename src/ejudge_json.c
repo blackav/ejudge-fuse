@@ -311,6 +311,93 @@ ejudge_json_parse_contest_info(
         cJSON *jresult = cJSON_GetObjectItem(root, "result");
         if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
+        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        if (!jj || jj->type != cJSON_Number) goto invalid_json;
+        eci->server_time = jj->valueint;
+
+        cJSON *jcontest = cJSON_GetObjectItem(jresult, "contest");
+        if (!jcontest || jcontest->type != cJSON_Object) goto invalid_json;
+
+        if ((jj = cJSON_GetObjectItem(jcontest, "name"))) {
+            if (jj->type != cJSON_String) goto invalid_json;
+            eci->name = strdup(jj->valuestring);
+        }
+        jj = cJSON_GetObjectItem(jcontest, "score_system");
+        if (!jj || jj->type != cJSON_Number) goto invalid_json;
+        eci->score_system = jj->valueint;
+        jj = cJSON_GetObjectItem(jcontest, "is_virtual");
+        if (jj && jj->type == cJSON_True) eci->is_virtual = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_unlimited");
+        if (jj && jj->type == cJSON_True) eci->is_unlimited = 1;
+        if ((jj = cJSON_GetObjectItem(jcontest, "duration"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->duration = jj->valueint;
+        }
+        jj = cJSON_GetObjectItem(jcontest, "is_restartable");
+        if (jj && jj->type == cJSON_True) eci->is_restartable = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_upsolving");
+        if (jj && jj->type == cJSON_True) eci->is_upsolving = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_started");
+        if (jj && jj->type == cJSON_True) eci->is_started = 1;
+        if ((jj = cJSON_GetObjectItem(jcontest, "start_time"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->start_time = jj->valueint;
+        }
+        jj = cJSON_GetObjectItem(jcontest, "is_clients_suspended");
+        if (jj && jj->type == cJSON_True) eci->is_clients_suspended = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_testing_suspended");
+        if (jj && jj->type == cJSON_True) eci->is_testing_suspended = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_printing_suspended");
+        if (jj && jj->type == cJSON_True) eci->is_printing_suspended = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_olympiad_accepting_mode");
+        if (jj && jj->type == cJSON_True) eci->is_olympiad_accepting_mode = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_testing_finished");
+        if (jj && jj->type == cJSON_True) eci->is_testing_finished = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_stopped");
+        if (jj && jj->type == cJSON_True) eci->is_stopped = 1;
+        if ((jj = cJSON_GetObjectItem(jcontest, "stop_time"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->stop_time = jj->valueint;
+        }
+        jj = cJSON_GetObjectItem(jcontest, "is_freezable");
+        if (jj && jj->type == cJSON_True) eci->is_freezable = 1;
+        jj = cJSON_GetObjectItem(jcontest, "is_frozen");
+        if (jj && jj->type == cJSON_True) eci->is_frozen = 1;
+        if ((jj = cJSON_GetObjectItem(jcontest, "unfreeze_time"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->unfreeze_time = jj->valueint;
+        }
+        if ((jj = cJSON_GetObjectItem(jcontest, "freeze_time"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->freeze_time = jj->valueint;
+        }
+        if ((jj = cJSON_GetObjectItem(jcontest, "expected_stop_time"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->expected_stop_time = jj->valueint;
+        }
+        if ((jj = cJSON_GetObjectItem(jcontest, "scheduled_finish_time"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            eci->scheduled_finish_time = jj->valueint;
+        }
+
+        cJSON *jonline = cJSON_GetObjectItem(jresult, "online");
+        if (jonline) {
+            if (jonline->type != cJSON_Object) goto invalid_json;
+
+            if ((jj = cJSON_GetObjectItem(jonline, "user_count"))) {
+                if (jj->type != cJSON_Number) goto invalid_json;
+                eci->user_count = jj->valueint;
+            }
+            if ((jj = cJSON_GetObjectItem(jonline, "max_user_count"))) {
+                if (jj->type != cJSON_Number) goto invalid_json;
+                eci->max_online_count = jj->valueint;
+            }
+            if ((jj = cJSON_GetObjectItem(jonline, "max_time"))) {
+                if (jj->type != cJSON_Number) goto invalid_json;
+                eci->max_online_time = jj->valueint;
+            }
+        }
+
         cJSON *jproblems = cJSON_GetObjectItem(jresult, "problems");
         if (jproblems) {
             if (jproblems->type != cJSON_Array) goto invalid_json;

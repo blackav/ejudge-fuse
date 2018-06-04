@@ -21,6 +21,8 @@
 
 #include <pthread.h>
 
+typedef unsigned char ejbytebool_t;
+
 struct EjSessionValue
 {
     _Bool ok;
@@ -73,6 +75,36 @@ struct EjContestInfo
 
     unsigned char *info_text;
     size_t info_size;
+
+    unsigned char *name;
+    time_t start_time;
+    time_t stop_time;
+    time_t unfreeze_time;
+    time_t freeze_time;
+    time_t scheduled_start_time;
+    time_t open_time;
+    time_t close_time;
+    time_t scheduled_finish_time;
+    time_t expected_stop_time;
+    time_t server_time;
+    time_t max_online_time;
+    int score_system;
+    int duration;
+    int user_count;
+    int max_online_count;
+    ejbytebool_t is_virtual;
+    ejbytebool_t is_unlimited;
+    ejbytebool_t is_started;
+    ejbytebool_t is_stopped;
+    ejbytebool_t is_frozen;
+    ejbytebool_t is_freezable;
+    ejbytebool_t is_olympiad_accepting_mode;
+    ejbytebool_t is_testing_finished;
+    ejbytebool_t is_printing_suspended;
+    ejbytebool_t is_testing_suspended;
+    ejbytebool_t is_clients_suspended;
+    ejbytebool_t is_upsolving;
+    ejbytebool_t is_restartable;
 
     int prob_size;
     struct EjContestProblem **probs;

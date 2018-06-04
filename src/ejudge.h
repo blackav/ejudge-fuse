@@ -86,3 +86,14 @@ run_status_str(
         size_t len,
         int prob_type,
         int var_score);
+
+/* scoring systems */
+enum
+{
+    SCORE_ACM,
+    SCORE_KIROV,
+    SCORE_OLYMPIAD,
+    SCORE_MOSCOW,
+
+    SCORE_TOTAL,
+};
