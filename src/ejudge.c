@@ -102,3 +102,26 @@ run_status_str(
     }
     return out;
 }
+
+const unsigned char * const problem_type_str[] =
+{
+    [PROB_TYPE_STANDARD] = "standard",
+    [PROB_TYPE_OUTPUT_ONLY] = "output-only",
+    [PROB_TYPE_SHORT_ANSWER] = "short-answer",
+    [PROB_TYPE_TEXT_ANSWER] = "text-answer",
+    [PROB_TYPE_SELECT_ONE] = "select-one",
+    [PROB_TYPE_SELECT_MANY] = "select-many",
+    [PROB_TYPE_CUSTOM] = "custom",
+    [PROB_TYPE_TESTS] = "tests",
+
+    [PROB_TYPE_LAST] = 0,
+};
+
+const unsigned char *
+problem_unparse_type(int val)
+{
+    if (val >= 0 && val < PROB_TYPE_LAST) {
+        return problem_type_str[val];
+    }
+    return NULL;
+}

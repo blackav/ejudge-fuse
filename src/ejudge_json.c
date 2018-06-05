@@ -565,18 +565,22 @@ ejudge_json_parse_problem_info(
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->type = jj->valueint;
         }
+        epi->full_score = -1;
         if ((jj = cJSON_GetObjectItem(jp, "full_score"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->full_score = jj->valueint;
         }
+        epi->full_user_score = -1;
         if ((jj = cJSON_GetObjectItem(jp, "full_user_score"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->full_user_score = jj->valueint;
         }
+        epi->min_score_1 = -1;
         if ((jj = cJSON_GetObjectItem(jp, "min_score_1"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->min_score_1 = jj->valueint;
         }
+        epi->min_score_2 = -1;
         if ((jj = cJSON_GetObjectItem(jp, "min_score_2"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->min_score_2 = jj->valueint;
@@ -626,17 +630,11 @@ ejudge_json_parse_problem_info(
         if ((jj = cJSON_GetObjectItem(jp, "disable_submit_after_ok"))) {
             epi->disable_submit_after_ok = (jj->type == cJSON_True);
         }
-        if ((jj = cJSON_GetObjectItem(jp, "disable_auto_testing"))) {
-            epi->disable_auto_testing = (jj->type == cJSON_True);
-        }
         if ((jj = cJSON_GetObjectItem(jp, "disable_testing"))) {
             epi->disable_testing = (jj->type == cJSON_True);
         }
         if ((jj = cJSON_GetObjectItem(jp, "enable_compilation"))) {
             epi->enable_compilation = (jj->type == cJSON_True);
-        }
-        if ((jj = cJSON_GetObjectItem(jp, "skip_testing"))) {
-            epi->skip_testing = (jj->type == cJSON_True);
         }
         if ((jj = cJSON_GetObjectItem(jp, "hidden"))) {
             epi->hidden = (jj->type == cJSON_True);
@@ -667,30 +665,37 @@ ejudge_json_parse_problem_info(
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->time_limit_ms = jj->valueint;
         }
+        epi->acm_run_penalty = -1;
         if ((jj = cJSON_GetObjectItem(jp, "acm_run_penalty"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->acm_run_penalty = jj->valueint;
         }
+        epi->test_score = -1;
         if ((jj = cJSON_GetObjectItem(jp, "test_score"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->test_score = jj->valueint;
         }
+        epi->run_penalty = -1;
         if ((jj = cJSON_GetObjectItem(jp, "run_penalty"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->run_penalty = jj->valueint;
         }
+        epi->disqualified_penalty = -1;
         if ((jj = cJSON_GetObjectItem(jp, "disqualified_penalty"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->disqualified_penalty = jj->valueint;
         }
+        epi->compile_error_penalty = -1;
         if ((jj = cJSON_GetObjectItem(jp, "compile_error_penalty"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->compile_error_penalty = jj->valueint;
         }
+        epi->tests_to_accept = -1;
         if ((jj = cJSON_GetObjectItem(jp, "tests_to_accept"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->tests_to_accept = jj->valueint;
         }
+        epi->min_tests_to_accept = -1;
         if ((jj = cJSON_GetObjectItem(jp, "min_tests_to_accept"))) {
             if (jj->type != cJSON_Number || jj->valueint < 0) goto invalid_json;
             epi->min_tests_to_accept = jj->valueint;
@@ -711,10 +716,6 @@ ejudge_json_parse_problem_info(
             if (jj->type != cJSON_String) goto invalid_json;
             epi->stand_column = strdup(jj->valuestring);
         }
-        if ((jj = cJSON_GetObjectItem(jp, "group_name"))) {
-            if (jj->type != cJSON_String) goto invalid_json;
-            epi->group_name = strdup(jj->valuestring);
-        }
         if ((jj = cJSON_GetObjectItem(jp, "input_file"))) {
             if (jj->type != cJSON_String) goto invalid_json;
             epi->input_file = strdup(jj->valuestring);
@@ -723,6 +724,7 @@ ejudge_json_parse_problem_info(
             if (jj->type != cJSON_String) goto invalid_json;
             epi->output_file = strdup(jj->valuestring);
         }
+        epi->ok_status = -1;
         if ((jj = cJSON_GetObjectItem(jp, "ok_status"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->ok_status = jj->valueint;
@@ -805,6 +807,7 @@ ejudge_json_parse_problem_info(
         if ((jj = cJSON_GetObjectItem(js, "is_eff_time_needed"))) {
             epi->is_eff_time_needed = (jj->type == cJSON_True);
         }
+        epi->best_run = -1;
         if ((jj = cJSON_GetObjectItem(js, "best_run"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->best_run = jj->valueint;
@@ -821,6 +824,7 @@ ejudge_json_parse_problem_info(
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->ce_attempts = jj->valueint;
         }
+        epi->best_score = -1;
         if ((jj = cJSON_GetObjectItem(js, "best_score"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->best_score = jj->valueint;

@@ -97,3 +97,5 @@ enum
 
     SCORE_TOTAL,
 };
+
+const unsigned char *problem_unparse_type(int val);

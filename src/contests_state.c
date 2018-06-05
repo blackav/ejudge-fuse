@@ -575,7 +575,6 @@ problem_info_free(struct EjProblemInfo *epi)
         free(epi->long_name);
         free(epi->stand_name);
         free(epi->stand_column);
-        free(epi->group_name);
         free(epi->input_file);
         free(epi->output_file);
         free(epi->compilers);

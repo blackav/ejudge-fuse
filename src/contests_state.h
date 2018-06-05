@@ -161,10 +161,8 @@ struct EjProblemInfo
     unsigned char enable_tokens;
     unsigned char tokens_for_user_ac;
     unsigned char disable_submit_after_ok;
-    unsigned char disable_auto_testing;
     unsigned char disable_testing;
     unsigned char enable_compilation;
-    unsigned char skip_testing;
     unsigned char hidden;
     unsigned char stand_hide_time;
     unsigned char stand_ignore_score;
@@ -187,7 +185,6 @@ struct EjProblemInfo
 
     unsigned char *stand_name;
     unsigned char *stand_column;
-    unsigned char *group_name;
     unsigned char *input_file;
     unsigned char *output_file;
 
