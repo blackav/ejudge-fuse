@@ -24,15 +24,15 @@ include files.make
 
 OFILES = $(CFILES:.c=.o)
 
-all : ejfuse
+all : ejudge-fuse
 
 deps.make : $(CFILES) $(HFILES)
 	gcc $(CFLAGS) -MM $(CFILES) > deps.make
 
 include deps.make
 
-ejfuse : $(OFILES)
+ejudge-fuse : $(OFILES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o$@ $(LDLIBS)
 
 clean :
-	rm -f ejfuse deps.make *.o
+	rm -f ejudge-fuse deps.make *.o
