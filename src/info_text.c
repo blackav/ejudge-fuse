@@ -299,10 +299,11 @@ ejfuse_contest_info_text(struct EjContestInfo *eci)
     char *text_s = NULL;
     size_t text_z = 0;
     FILE *text_f = open_memstream(&text_s, &text_z);
+    struct KeyValueVector kvv = {};
 
-    fprintf(text_f, "Contest information:\n");
+    kvv_push_back_key(&kvv, 0, "Contest information");
     if (eci->name && eci->name[0]) {
-        fprintf(text_f, "\tName:\t\t%s\n", eci->name);
+        kvv_push_back_const_str(&kvv, 1, "Name", eci->name);
     }
     const unsigned char *type = NULL;
     if (eci->score_system == SCORE_ACM) {
@@ -330,123 +331,90 @@ ejfuse_contest_info_text(struct EjContestInfo *eci)
         }
     }
     if (type) {
-        fprintf(text_f, "\tType:\t\t%s\n", type);
+        kvv_push_back_const_str(&kvv, 1, "Type", type);
     }
     if (eci->is_testing_finished) {
-        fprintf(text_f, "\tOlympiad:\t%s\n", "TESTING FINISHED");
+        kvv_push_back_const_str(&kvv, 1, "Olympiad", "TESTING FINISHED");
     } else if (eci->is_olympiad_accepting_mode) {
-        fprintf(text_f, "\tOlympiad:\t%s\n", "ACCEPTING SOLUTIONS");
+        kvv_push_back_const_str(&kvv, 1, "Olympiad", "ACCEPTING SOLUTIONS");
     }
     if (eci->is_clients_suspended) {
-        fprintf(text_f, "\tClients:\t\t%s\n", "SUSPENDED");
+        kvv_push_back_const_str(&kvv, 1, "Clients", "SUSPENDED");
     }
     if (eci->is_testing_suspended) {
-        fprintf(text_f, "\tTesting:\t\t%s\n", "SUSPENDED");
+        kvv_push_back_const_str(&kvv, 1, "Testing", "SUSPENDED");
     }
     if (eci->is_printing_suspended) {
-        fprintf(text_f, "\tPrinting:\t\t%s\n", "SUSPENDED");
+        kvv_push_back_const_str(&kvv, 1, "Printing", "SUSPENDED");
     }
     if (eci->is_upsolving) {
-        fprintf(text_f, "\tUpsolving:\t%s\n", "ACTIVATED");
+        kvv_push_back_const_str(&kvv, 1, "Upsolving", "ACTIVATED");
     }
     if (eci->is_restartable) {
-        fprintf(text_f, "\tVirtual Restart:\t%s\n", "ENABLED");
+        kvv_push_back_const_str(&kvv, 1, "Virtual Restart", "ENABLED");
     }
     if (eci->is_unlimited) {
-        fprintf(text_f, "\tDuration:\tUnlimited\n");
+        kvv_push_back_const_str(&kvv, 1, "Duration", "UNLIMITED");
     } else {
-        unsigned char *s = dur_to_str(eci->duration);
-        fprintf(text_f, "\tDuration:\t%s\n", s);
-        free(s);
+        kvv_push_back_move_str(&kvv, 1, "Duration", dur_to_str(eci->duration));
     }
     if (eci->is_started && eci->is_stopped) {
-        fprintf(text_f, "\tStatus:\t\tSTOPPED\n");
-        unsigned char *s = time_to_str(eci->start_time);
-        fprintf(text_f, "\tStart Time:\t%s\n", s);
-        free(s);
-        s = time_to_str(eci->stop_time);
-        fprintf(text_f, "\tStop Time:\t%s\n", s);
-        free(s);
+        kvv_push_back_const_str(&kvv, 1, "Status", "STOPPED");
+        kvv_push_back_move_str(&kvv, 1, "Start Time", time_to_str(eci->start_time));
+        kvv_push_back_move_str(&kvv, 1, "Stop Time", time_to_str(eci->stop_time));
         if (eci->is_frozen) {
-            fprintf(text_f, "\tStandings:\t%s\n", "FROZEN");
-            s = time_to_str(eci->unfreeze_time);
-            fprintf(text_f, "\tUnfreeze Time:\t%s\n", s);
-            free(s);
+            kvv_push_back_const_str(&kvv, 1, "Standings", "FROZEN");
+            kvv_push_back_move_str(&kvv, 1, "Unfreeze Time", time_to_str(eci->unfreeze_time));
         }
     } else if (eci->is_started) {
-        fprintf(text_f, "\tStatus:\t\tRUNNING\n");
-        unsigned char *s = time_to_str(eci->start_time);
-        fprintf(text_f, "\tStart Time:\t%s\n", s);
-        free(s);
-        s = dur_to_str((int)(eci->server_time - eci->start_time));
-        fprintf(text_f, "\tElapsed Time:\t%s\n", s);
-        free(s);
+        kvv_push_back_const_str(&kvv, 1, "Status", "RUNNING");
+        kvv_push_back_move_str(&kvv, 1, "Start Time", time_to_str(eci->start_time));
+        kvv_push_back_move_str(&kvv, 1, "Elapsed Time", dur_to_str((int)(eci->server_time - eci->start_time)));
         if (eci->scheduled_finish_time > 0) {
-            s = time_to_str(eci->scheduled_finish_time);
-            fprintf(text_f, "\tScheduled Stop:\t%s\n", s);
-            free(s);
-            s = dur_to_str((int)(eci->scheduled_finish_time - eci->server_time));
-            fprintf(text_f, "\tRemaining:\t%s\n", s);
-            free(s);
+            kvv_push_back_move_str(&kvv, 1, "Scheduled Stop", time_to_str(eci->scheduled_finish_time));
+            kvv_push_back_move_str(&kvv, 1, "Remaining", dur_to_str((int)(eci->scheduled_finish_time - eci->server_time)));
         }
         if (eci->expected_stop_time > 0) {
-            s = time_to_str(eci->expected_stop_time);
-            fprintf(text_f, "\tExpected Stop:\t%s\n", s);
-            free(s);
-            s = dur_to_str((int)(eci->expected_stop_time - eci->server_time));
-            fprintf(text_f, "\tRemaining:\t%s\n", s);
-            free(s);
+            kvv_push_back_move_str(&kvv, 1, "Expected Stop", time_to_str(eci->expected_stop_time));
+            kvv_push_back_move_str(&kvv, 1, "Remaining", dur_to_str((int)(eci->expected_stop_time - eci->server_time)));
         }
         if (eci->is_freezable) {
             if (eci->is_frozen) {
-                fprintf(text_f, "\tStandings:\t\t%s\n", "FROZEN");
+                kvv_push_back_const_str(&kvv, 1, "Standings", "FROZEN");
             }
-            s = time_to_str(eci->freeze_time);
-            fprintf(text_f, "\tFreeze Time:\t\t%s\n", s);
-            free(s);
+            kvv_push_back_move_str(&kvv, 1, "Freeze Time", time_to_str(eci->freeze_time));
         }
     } else {
-        fprintf(text_f, "\tStatus:\t\tNOT STARTED\n");
+        kvv_push_back_const_str(&kvv, 1, "Status", "NOT STARTED");
         if (eci->scheduled_start_time > 0) {
-            unsigned char *s = time_to_str(eci->scheduled_start_time);
-            fprintf(text_f, "\tScheduled:\t%s\n", s);
-            free(s);
-            s = dur_to_str((int)(eci->scheduled_start_time - eci->server_time));
-            fprintf(text_f, "\tBefore Start:\t%s\n", s);
-            free(s);
+            kvv_push_back_move_str(&kvv, 1, "Scheduled", time_to_str(eci->scheduled_start_time));
+            kvv_push_back_move_str(&kvv, 1, "Before Start", dur_to_str((int)(eci->scheduled_start_time - eci->server_time)));
         }
         if (eci->open_time > 0) {
-            unsigned char *s = time_to_str(eci->open_time);
-            fprintf(text_f, "\tOpen Time:\t%s\n", s);
-            free(s);
+            kvv_push_back_move_str(&kvv, 1, "Open Time", time_to_str(eci->open_time));
         }
         if (eci->close_time > 0) {
-            unsigned char *s = time_to_str(eci->close_time);
-            fprintf(text_f, "\tClose Time:\t%s\n", s);
-            free(s);
+            kvv_push_back_move_str(&kvv, 1, "Close Time", time_to_str(eci->close_time));
         }
     }
 
-    fprintf(text_f, "Server statistics:\n");
+    kvv_push_back_key(&kvv, 0, "Server statistics");
     if (eci->server_time > 0) {
-        unsigned char *s = time_to_str(eci->server_time);
-        fprintf(text_f, "\tServer time:\t%s\n", s);
-        free(s);
+        kvv_push_back_move_str(&kvv, 1, "Server time", time_to_str(eci->server_time));
     }
     if (eci->user_count > 0) {
-        fprintf(text_f, "\tOn-line users:\t%d\n", eci->user_count);
+        kvv_push_back_int(&kvv, 1, "On-line users", eci->user_count);
     }
     if (eci->max_online_count > 0 && eci->max_online_time > 0) {
-        unsigned char *s = time_to_str(eci->max_online_time);
-        fprintf(text_f, "\tMax On-line:\t%d (%s)\n", eci->max_online_count, s);
-        free(s);
-    }
-    if (eci->update_time_us > 0) {
-        unsigned char *s = utime_to_str(eci->update_time_us);
-        fprintf(text_f, "\tStatus updated:\t%s\n", s);
-        free(s);
+        kvv_push_back_int(&kvv, 1, "Max On-line users", eci->max_online_count);
+        kvv_push_back_move_str(&kvv, 1, "Max On-line Time", time_to_str(eci->max_online_time));
     }
 
+    if (eci->update_time_us > 0) {
+        kvv_push_back_move_str(&kvv, 1, "Status update time", utime_to_str(eci->update_time_us));
+    }
+
+    kvv_generate(&kvv, text_f);
     fclose(text_f);
     eci->info_text = text_s;
     eci->info_size = text_z;
