@@ -255,7 +255,7 @@ struct EjRunMessages;
 
 void ejfuse_contest_info_text(struct EjContestInfo *eci);
 void ejfuse_problem_info_text(struct EjProblemInfo *epi, struct EjContestState *ecs);
-void ejfuse_run_info_text(struct EjRunInfo *eri);
+void ejfuse_run_info_text(struct EjRunInfo *eri, struct EjContestState *ecs);
 void ejfuse_run_messages_text(struct EjRunMessages *erms);
 
 unsigned char *fix_name(unsigned char *str);

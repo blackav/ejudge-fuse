@@ -684,15 +684,96 @@ ejfuse_problem_info_text(struct EjProblemInfo *epi, struct EjContestState *ecs)
 }
 
 void
-ejfuse_run_info_text(struct EjRunInfo *eri)
+ejfuse_run_info_text(struct EjRunInfo *eri, struct EjContestState *ecs)
 {
     char *text_s = NULL;
     size_t text_z = 0;
     FILE *text_f = open_memstream(&text_s, &text_z);
+    struct KeyValueVector kvv = {};
+    unsigned char status_str[128];
 
-    fprintf(text_f, "Problem information:\n");
-    fprintf(text_f, "\tRun Id:\t\t%d\n", eri->run_id);
+    kvv_push_back_key(&kvv, 0, "Run information");
+    kvv_push_back_int(&kvv, 1, "Run Id", eri->run_id);
+    kvv_push_back_move_str(&kvv, 1, "Run Time", utime_to_str(eri->run_time_us));
+    if (eri->is_with_duration) {
+        kvv_push_back_move_str(&kvv, 1, "Time from Start", dur_to_str(eri->duration));
+    }
+    struct EjContestInfo *eci = contest_info_read_lock(ecs);
+    if (eci && eci->ok) {
+        struct EjContestProblem *ecp = NULL;
+        if (eri->prob_id > 0 && eri->prob_id < eci->prob_size) {
+            ecp = eci->probs[eri->prob_id];
+        }
+        if (ecp && ecp->short_name && ecp->short_name[0]) {
+            if (ecp->long_name && ecp->long_name[0]) {
+                kvv_push_back_format(&kvv, 1, "Problem", "%s - %s", ecp->short_name, ecp->long_name);
+            } else {
+                kvv_push_back_copy_str(&kvv, 1, "Problem", ecp->short_name);
+            }
+        } else {
+            kvv_push_back_format(&kvv, 1, "Problem", "(%d)", eri->prob_id);
+        }
+        struct EjContestCompiler *ecc = NULL;
+        if (eri->lang_id > 0 && eri->lang_id < eci->compiler_size) {
+            ecc = eci->compilers[eri->lang_id];
+        }
+        if (ecc && ecc->short_name && ecc->short_name[0]) {
+            if (ecc->long_name && ecc->long_name[0]) {
+                kvv_push_back_format(&kvv, 1, "Language", "%s - %s", ecc->short_name, ecc->long_name);
+            } else {
+                kvv_push_back_copy_str(&kvv, 1, "Language", ecc->short_name);
+            }
+        } else if (eri->lang_id > 0) {
+            kvv_push_back_format(&kvv, 1, "Language", "(%d)", eri->lang_id);
+        }
+    } else {
+        kvv_push_back_format(&kvv, 1, "Problem", "(%d)", eri->prob_id);
+        if (eri->lang_id > 0) {
+            kvv_push_back_format(&kvv, 1, "Language", "(%d)", eri->lang_id);
+        }
+    }
+    contest_info_read_unlock(eci);
+    /*
+    int user_id;
+    */
+    kvv_push_back_copy_str(&kvv, 1, "Status", run_status_str(eri->status, status_str, sizeof(status_str), 0, 0));
+    if (eri->is_score_available) {
+        if (eri->score >= 0) {
+            if (eri->score_str && eri->score_str[0]) {
+                kvv_push_back_format(&kvv, 1, "Score", "%d (%s)", eri->score, eri->score_str);
+            } else {
+                kvv_push_back_int(&kvv, 1, "Score", eri->score);
+            }
+        }
+    }
+    if (eri->is_failed_test_available && eri->failed_test > 0) {
+        kvv_push_back_int(&kvv, 1, "Failed Test", eri->failed_test);
+    }
+    if (eri->is_passed_tests_available && eri->passed_tests >= 0) {
+        kvv_push_back_int(&kvv, 1, "Passed Tests", eri->passed_tests);
+    }
+    if (eri->is_with_effective_time && eri->effective_time > 0) {
+        kvv_push_back_move_str(&kvv, 1, "Effective Time", time_to_str(eri->effective_time));
+    }
+    if (eri->is_imported) {
+        kvv_push_back_const_str(&kvv, 1, "Imported", "yes");
+    }
+    if (eri->is_hidden) {
+        kvv_push_back_const_str(&kvv, 1, "Hidden", "yes");
+    }
 
+    /*
+    unsigned char is_standard_problem;
+    unsigned char is_minimal_report;
+    unsigned char is_src_enabled;
+    unsigned char is_report_enabled;
+    unsigned char is_compiler_output_available;
+    unsigned char is_report_available;
+     */
+    kvv_push_back_key(&kvv, 0, "Server information");
+    kvv_push_back_move_str(&kvv, 1, "Server time", time_to_str(eri->server_time));
+
+    kvv_generate(&kvv, text_f);
     fclose(text_f);
     eri->info_text = text_s;
     eri->info_size = text_z;

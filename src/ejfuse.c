@@ -574,7 +574,7 @@ run_info_maybe_update(
 
     eri = run_info_create(ers->run_id);
     ejudge_client_run_info_request(efs, ecs, &esv, ers->run_id, current_time_us, eri);
-    ejfuse_run_info_text(eri);
+    ejfuse_run_info_text(eri, ecs);
     run_info_set(ers, eri);
 }
 
