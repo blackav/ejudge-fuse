@@ -603,12 +603,28 @@ ejfuse_problem_info_text(struct EjProblemInfo *epi, struct EjContestState *ecs)
     if (epi->deadline > 0) {
         kvv_push_back_move_str(&kvv, 1, "Deadline", time_to_str(epi->deadline));
     }
-    if (epi->compiler_size > 0 && epi->compilers) {
-    /*
-FIXME: need contest state structure
-    int compiler_size;
-    unsigned char *compilers;
-         */
+    if (epi->compiler_size > 0 && epi->compilers && ecs) {
+        struct EjContestInfo *eci = contest_info_read_lock(ecs);
+        if (eci && eci->ok) {
+            char *comp_s = NULL;
+            size_t comp_z = 0;
+            FILE *comp_f = open_memstream(&comp_s, &comp_z);
+            const unsigned char *sep = "";
+            for (int lang_id = 1; lang_id < epi->compiler_size; ++lang_id) {
+                if (lang_id < eci->compiler_size && epi->compilers[lang_id]) {
+                    struct EjContestCompiler *ecc = eci->compilers[lang_id];
+                    if (ecc && ecc->short_name && ecc->short_name[0]) {
+                        fprintf(comp_f, "%s%s", sep, ecc->short_name);
+                        sep = ", ";
+                    }
+                }
+            }
+            fclose(comp_f);
+            if (comp_s && comp_s[0]) {
+                kvv_push_back_move_str(&kvv, 1, "Allowed Compilers", comp_s);
+            }
+        }
+        contest_info_read_unlock(eci);
     }
     if ((long long) epi->max_vm_size > 0) {
         unsigned char buf[128];
