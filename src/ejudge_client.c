@@ -63,7 +63,7 @@ ejudge_client_get_top_session_request(
     {
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sregister/login-json", efs->url);
+        fprintf(url_f, "%sregister", efs->url);
         fclose(url_f); url_f = NULL;
     }
 
@@ -76,6 +76,7 @@ ejudge_client_get_top_session_request(
         s = curl_easy_escape(curl, efs->password, 0);
         fprintf(post_f, "&password=%s", s);
         free(s); s = NULL;
+        fprintf(post_f, "&action=login-json");
         fprintf(post_f, "&json=1");
         fclose(post_f); post_f = NULL;
     }
@@ -164,7 +165,7 @@ ejudge_client_get_contest_list_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sregister/user-contests-json?SID=%s&EJSID=%s&json=1",
+        fprintf(url_f, "%sregister?action=user-contests-json&SID=%s&EJSID=%s&json=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)));
@@ -258,7 +259,7 @@ ejudge_client_enter_contest_request(
     {
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sregister/enter-contest-json", efs->url);
+        fprintf(url_f, "%sregister", efs->url);
         fclose(url_f); url_f = NULL;
     }
 
@@ -272,6 +273,7 @@ ejudge_client_enter_contest_request(
         fprintf(post_f, "&EJSID=%s", s);
         free(s); s = NULL;
         fprintf(post_f, "&contest_id=%d", ecs->cnts_id);
+        fprintf(post_f, "&action=enter-contest-json");
         fprintf(post_f, "&json=1");
         fclose(post_f); post_f = NULL;
     }
@@ -360,7 +362,7 @@ ejudge_client_contest_info_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/contest-status-json?SID=%s&EJSID=%s&json=1",
+        fprintf(url_f, "%sclient?action=contest-status-json&SID=%s&EJSID=%s&json=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)));
@@ -452,7 +454,7 @@ ejudge_client_problem_info_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/problem-status-json?SID=%s&EJSID=%s&problem=%d&json=1",
+        fprintf(url_f, "%sclient?action=problem-status-json&SID=%s&EJSID=%s&problem=%d&json=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
@@ -548,7 +550,7 @@ ejudge_client_problem_statement_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/problem-statement-json?SID=%s&EJSID=%s&problem=%d&json=1",
+        fprintf(url_f, "%sclient?action=problem-statement-json&SID=%s&EJSID=%s&problem=%d&json=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
@@ -660,10 +662,14 @@ ejudge_client_submit_run_request(
     {
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
-        fprintf(url_f, "%sclient/submit-run", efs->url);
+        fprintf(url_f, "%sclient", efs->url);
         fclose(url_f);
     }
 
+    curl_formadd(&post_head, &post_tail,
+                 CURLFORM_COPYNAME, "action",
+                 CURLFORM_COPYCONTENTS, "submit-run",
+                 CURLFORM_END);
     curl_formadd(&post_head, &post_tail,
                  CURLFORM_COPYNAME, "SID",
                  CURLFORM_COPYCONTENTS, esv->session_id,
@@ -776,7 +782,7 @@ ejudge_client_problem_runs_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/list-runs-json?SID=%s&EJSID=%s&prob_id=%d&json=1&mode=1",
+        fprintf(url_f, "%sclient?action=list-runs-json&SID=%s&EJSID=%s&prob_id=%d&json=1&mode=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
@@ -871,7 +877,7 @@ ejudge_client_run_info_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/run-status-json?SID=%s&EJSID=%s&run_id=%d&json=1&mode=1",
+        fprintf(url_f, "%sclient?action=run-status-json&SID=%s&EJSID=%s&run_id=%d&json=1&mode=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
@@ -967,7 +973,7 @@ ejudge_client_run_source_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/download-run?SID=%s&EJSID=%s&run_id=%d&json=1",
+        fprintf(url_f, "%sclient?action=download-run&SID=%s&EJSID=%s&run_id=%d&json=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
@@ -1055,7 +1061,7 @@ ejudge_client_run_messages_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/run-messages-json?SID=%s&EJSID=%s&run_id=%d&json=1&mode=1",
+        fprintf(url_f, "%sclient?action=run-messages-json&SID=%s&EJSID=%s&run_id=%d&json=1&mode=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
@@ -1154,7 +1160,7 @@ ejudge_client_run_test_request(
         size_t url_z = 0;
         FILE *url_f = open_memstream(&url_s, &url_z);
         char *s1, *s2;
-        fprintf(url_f, "%sclient/run-test-json?SID=%s&EJSID=%s&run_id=%d&num=%d&index=%d&json=1&mode=1",
+        fprintf(url_f, "%sclient?action=run-test-json&SID=%s&EJSID=%s&run_id=%d&num=%d&index=%d&json=1&mode=1",
                 efs->url,
                 (s1 = curl_easy_escape(curl, esv->session_id, 0)),
                 (s2 = curl_easy_escape(curl, esv->client_key, 0)),
