@@ -453,7 +453,7 @@ ejfuse_contest_info_text(struct EjContestInfo *eci)
 }
 
 void
-ejfuse_problem_info_text(struct EjProblemInfo *epi)
+ejfuse_problem_info_text(struct EjProblemInfo *epi, struct EjContestState *ecs)
 {
     char *text_s = NULL;
     size_t text_z = 0;

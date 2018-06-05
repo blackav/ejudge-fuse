@@ -468,7 +468,7 @@ problem_info_maybe_update(
 
     epi = problem_info_create(eps->prob_id);
     ejudge_client_problem_info_request(efs, ecs, &esv, eps->prob_id, current_time_us, epi);
-    ejfuse_problem_info_text(epi);
+    ejfuse_problem_info_text(epi, ecs);
     problem_info_set(eps, epi);
 }
 
