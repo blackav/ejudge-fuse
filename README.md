@@ -208,3 +208,64 @@ cp solution.cpp /mnt/ejudge/4/problems/A/submit/g++
 
 This command submits a solution `solution.cpp` to problem `A` written for compiler `g++`.
 
+### Runs directory
+
+`runs` directory contains the list of user's submits for this problem. Each directory entry consists of
+run_id, run status, and either score, or failed test number, if such info is applicable. For example,
+
+```
+dr-x------ 2 cher cher 4096 Mar 20 20:26 1115,OK,98
+dr-x------ 2 cher cher 4096 Feb 26 10:36 154,Ignored
+dr-x------ 2 cher cher 4096 Feb 26 10:36 155,Compilation error
+dr-x------ 2 cher cher 4096 Feb 26 10:44 156,Ignored
+dr-x------ 2 cher cher 4096 Feb 26 10:48 157,Rejected
+dr-x------ 2 cher cher 4096 Mar 16 19:26 780,Rejected
+```
+
+Only the run_id part is mandatory, status and score or failed test may be omitted.
+
+### Run directory
+
+A run directory contains files with information about the run status, source code, the compiler and the valuer outputs, etc.
+The directory listing may look as follows:
+
+```
+-r-------- 2 cher cher  210 Jun  6 07:21 compiler.txt
+-r-------- 2 cher cher  379 Jun  6 07:21 INFO
+-r-------- 2 cher cher 3925 Jun  6 07:21 info.json
+-r-------- 2 cher cher 2739 Mar 20 20:26 source.cpp
+dr-x------ 2 cher cher 4096 Mar 20 20:26 tests
+```
+
+`INFO` is a human-readable problem description
+
+`info.json` is the file as received from the server. It contains the problem description in JSON format.
+
+`compiler.txt` is the compiler output.
+
+`source.cpp` is the source file. The file has basename `source` and the suffix depending on the programming language
+specified when this run was submitted.
+
+`tests` is the directory with tests data. It is available only if the corresponding option is set in the ejudge config configuration file.
+The directory contains a subdirectory for each test, for example:
+
+```
+dr-x------ 2 cher cher 4096 Mar 20 20:26 1
+dr-x------ 2 cher cher 4096 Mar 20 20:26 2
+dr-x------ 2 cher cher 4096 Mar 20 20:26 3
+dr-x------ 2 cher cher 4096 Mar 20 20:26 4
+dr-x------ 2 cher cher 4096 Mar 20 20:26 5
+dr-x------ 2 cher cher 4096 Mar 20 20:26 6
+```
+
+### Test directory
+
+A test directory contains files with the input data, correct answer, program output, program standard error stream and checker output, as shown below:
+
+```
+-r-------- 1 cher cher  3 Mar 20 20:26 checker
+-r-------- 1 cher cher 70 Mar 20 20:26 correct
+-r-------- 1 cher cher  0 Mar 20 20:26 error
+-r-------- 1 cher cher  0 Mar 20 20:26 input
+-r-------- 1 cher cher 70 Mar 20 20:26 output
+```
