@@ -953,7 +953,7 @@ ejf_process_path_runs(const char *path, struct EjFuseRequest *efr)
 static int
 ejf_process_path_submit(const char *path, struct EjFuseRequest *efr)
 {
-    file_nodes_list(efr->efs->file_nodes);
+    //file_nodes_list(efr->efs->file_nodes);
 
     unsigned char lang_buf[NAME_MAX + 1];
     if (path[0] != '/') return -ENOENT;

@@ -96,9 +96,11 @@ ejudge_json_parse_top_session(
         } else {
             goto invalid_json;
         }
+        /*
         printf("session_id: %s\n", ets->session_id);
         printf("client_key: %s\n", ets->client_key);
         printf("expire: %lld\n", (long long) ets->expire_us);
+        */
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);
         goto failed;

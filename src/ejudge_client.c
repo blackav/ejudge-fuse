@@ -107,7 +107,7 @@ ejudge_client_get_top_session_request(
     free(url_s); url_s = NULL;
     curl_easy_cleanup(curl); curl = NULL;
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
 
     if (ejudge_json_parse_top_session(err_f, resp_s, tls) < 0) {
         goto failed;
@@ -195,15 +195,17 @@ ejudge_client_get_contest_list_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
 
     if (ejudge_json_parse_contest_list(err_f, resp_s, contests) < 0) {
         goto failed;
     }
 
+    /*
     for (int i = 0; i < contests->count; ++i) {
         printf("%d: %s\n", contests->entries[i].id, contests->entries[i].name);
     }
+    */
 
     // normal return
     contests->log_s = NULL;
@@ -300,7 +302,7 @@ ejudge_client_enter_contest_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
 
     if (ejudge_json_parse_contest_session(err_f, resp_s, ecc) < 0) {
         goto failed;
@@ -391,7 +393,7 @@ ejudge_client_contest_info_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
     eci->info_json_text = strdup(resp_s);
     eci->info_json_size = strlen(resp_s);
 
@@ -484,7 +486,7 @@ ejudge_client_problem_info_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
     epi->info_json_text = strdup(resp_s);
     epi->info_json_size = strlen(resp_s);
 
@@ -576,7 +578,7 @@ ejudge_client_problem_statement_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
 
     {
         size_t stmt_z = 0;
@@ -721,7 +723,7 @@ ejudge_client_submit_run_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
 
     if (ejudge_json_parse_submit_run_reply(err_f, resp_s, &run_id) < 0) {
         goto failed;
@@ -812,7 +814,7 @@ ejudge_client_problem_runs_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
     eprs->info_json_text = strdup(resp_s);
     eprs->info_json_size = strlen(resp_s);
 
@@ -907,7 +909,7 @@ ejudge_client_run_info_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
     eri->info_json_text = strdup(resp_s);
     eri->info_json_size = strlen(resp_s);
 
@@ -998,7 +1000,7 @@ ejudge_client_run_source_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
 
     ert->data = resp_s; resp_s = NULL;
     ert->size = resp_z;
@@ -1091,7 +1093,7 @@ ejudge_client_run_messages_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
     erms->json_text = strdup(resp_s);
     erms->json_size = strlen(resp_s);
 
@@ -1185,7 +1187,7 @@ ejudge_client_run_test_request(
         goto failed;
     }
 
-    fprintf(stdout, ">%s<\n", resp_s);
+    //fprintf(stdout, ">%s<\n", resp_s);
     ertd->data = resp_s; resp_s = NULL;
     ertd->size = resp_z;
 
