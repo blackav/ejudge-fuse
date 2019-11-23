@@ -313,7 +313,7 @@ ejudge_json_parse_contest_info(
         cJSON *jresult = cJSON_GetObjectItem(root, "result");
         if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
-        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        cJSON *jj = cJSON_GetObjectItem(root, "server_time");
         if (!jj || jj->type != cJSON_Number) goto invalid_json;
         eci->server_time = jj->valueint;
 
@@ -547,7 +547,7 @@ ejudge_json_parse_problem_info(
         cJSON *jresult = cJSON_GetObjectItem(root, "result");
         if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
-        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        cJSON *jj = cJSON_GetObjectItem(root, "server_time");
         if (jj) {
             if (jj->type != cJSON_Number || jj->valueint <= 0) goto invalid_json;
             epi->server_time = jj->valueint;
@@ -910,7 +910,7 @@ ejudge_json_parse_problem_runs(
         if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
         /*
-        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        cJSON *jj = cJSON_GetObjectItem(root, "server_time");
         if (jj) {
             if (jj->type != cJSON_Number || jj->valueint <= 0) goto invalid_json;
             epi->server_time = jj->valueint;
@@ -1111,7 +1111,7 @@ ejudge_json_parse_run_info(
       cJSON *jresult = cJSON_GetObjectItem(root, "result");
       if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
-      cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+      cJSON *jj = cJSON_GetObjectItem(root, "server_time");
       if (!jj || jj->type != cJSON_Number) goto invalid_json;
       eri->server_time = jj->valueint;
 
@@ -1371,7 +1371,7 @@ ejudge_json_parse_run_messages(
         cJSON *jresult = cJSON_GetObjectItem(root, "result");
         if (!jresult || jresult->type != cJSON_Object) goto invalid_json;
 
-        cJSON *jj = cJSON_GetObjectItem(jresult, "server_time");
+        cJSON *jj = cJSON_GetObjectItem(root, "server_time");
         if (!jj || jj->type != cJSON_Number) goto invalid_json;
         erms->server_time = jj->valueint;
 
