@@ -1,6 +1,6 @@
 #pragma once
 
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -20,4 +20,4 @@
  */
 
 struct EjFuseOperations;
-const struct EjFuseOperations ejfuse_root_operations;
+const struct EjFuseOperations ejfuse_root_operations __attribute__((common));
