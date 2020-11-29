@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -1274,7 +1274,7 @@ int main(int argc, char *argv[])
     efs->file_nodes = file_nodes_create(NODE_QUOTA, SIZE_QUOTA);
     efs->submit_thread = submit_thread_create();
 
-    submit_thread_start(efs->submit_thread, efs);
+    //submit_thread_start(efs->submit_thread, efs);
 
     long long current_time_us = get_current_time();
     efs->start_time_us = current_time_us;

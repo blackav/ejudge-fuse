@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -19,6 +19,7 @@
 
 #include "ops_fuse.h"
 #include "ejfuse.h"
+#include "submit_thread.h"
 
 #include <errno.h>
 
@@ -384,8 +385,9 @@ ejf_entry_fsyncdir(const char *path, int datasync, struct fuse_file_info *ffi)
 static void *
 ejf_entry_init(struct fuse_conn_info *conn)
 {
-    // WTF?
-    return fuse_get_context()->private_data;
+    struct EjFuseState *efs = fuse_get_context()->private_data;
+    submit_thread_start(efs->submit_thread, efs);
+    return efs;
 }
 static void
 ejf_entry_destroy(void *user)

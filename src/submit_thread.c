@@ -223,6 +223,7 @@ thread_func(void *arg)
     struct EjSubmitThread *st = (struct EjSubmitThread *) arg;
 
     st->id = pthread_self(); // both parent and child do this
+    pthread_setname_np(st->id, "SUBMIT_THREAD");
 
     while (1) {
         pthread_mutex_lock(&st->qm);
