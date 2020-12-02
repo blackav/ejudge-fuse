@@ -1252,6 +1252,7 @@ int main(int argc, char *argv[])
                     free(ej_password); ej_password = NULL;
                 }
                 tcsetattr(0, TCSAFLUSH, &old);
+                putchar('\n');
             }
         }
     }
