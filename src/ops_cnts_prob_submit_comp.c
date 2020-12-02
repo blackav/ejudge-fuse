@@ -1,4 +1,5 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* -*- mode: c; c-basic-offset: 4 -*- */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -42,14 +43,21 @@ ejf_getattr(struct EjFuseRequest *efr, const char *path, struct stat *stb)
         return -ENOENT;
     }
 
-    if (efr->lang_id <= 0) {
-        problem_info_read_unlock(epi);
-        return -ENOENT;
-    }
-    if (epi->compiler_size && epi->compilers) {
-        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+    if (epi->type != 0) {
+        if (efr->lang_id != 0) {
             problem_info_read_unlock(epi);
             return -ENOENT;
+        }
+    } else {
+        if (efr->lang_id <= 0) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+        if (epi->compiler_size && epi->compilers) {
+            if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+                problem_info_read_unlock(epi);
+                return -ENOENT;
+            }
         }
     }
 
@@ -91,16 +99,25 @@ ejf_access(struct EjFuseRequest *efr, const char *path, int mode)
         problem_info_read_unlock(epi);
         return -ENOENT;
     }
-    if (efr->lang_id <= 0) {
-        problem_info_read_unlock(epi);
-        return -ENOENT;
-    }
-    if (epi->compiler_size && epi->compilers) {
-        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+
+    if (epi->type != 0) {
+        if (efr->lang_id != 0) {
             problem_info_read_unlock(epi);
             return -ENOENT;
         }
+    } else {
+        if (efr->lang_id <= 0) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+        if (epi->compiler_size && epi->compilers) {
+            if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+                problem_info_read_unlock(epi);
+                return -ENOENT;
+            }
+        }
     }
+
     problem_info_read_unlock(epi);
 
     if (efs->owner_uid == efr->fx->uid) {
@@ -127,14 +144,22 @@ ejf_opendir(struct EjFuseRequest *efr, const char *path, struct fuse_file_info *
         problem_info_read_unlock(epi);
         return -ENOENT;
     }
-    if (efr->lang_id <= 0) {
-        problem_info_read_unlock(epi);
-        return -ENOENT;
-    }
-    if (epi->compiler_size && epi->compilers) {
-        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+
+    if (epi->type != 0) {
+        if (efr->lang_id != 0) {
             problem_info_read_unlock(epi);
             return -ENOENT;
+        }
+    } else {
+        if (efr->lang_id <= 0) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+        if (epi->compiler_size && epi->compilers) {
+            if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+                problem_info_read_unlock(epi);
+                return -ENOENT;
+            }
         }
     }
     problem_info_read_unlock(epi);
@@ -160,14 +185,22 @@ ejf_readdir(
         problem_info_read_unlock(epi);
         return -ENOENT;
     }
-    if (efr->lang_id <= 0) {
-        problem_info_read_unlock(epi);
-        return -ENOENT;
-    }
-    if (epi->compiler_size && epi->compilers) {
-        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+
+    if (epi->type != 0) {
+        if (efr->lang_id != 0) {
             problem_info_read_unlock(epi);
             return -ENOENT;
+        }
+    } else {
+        if (efr->lang_id <= 0) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+        if (epi->compiler_size && epi->compilers) {
+            if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+                problem_info_read_unlock(epi);
+                return -ENOENT;
+            }
         }
     }
     problem_info_read_unlock(epi);

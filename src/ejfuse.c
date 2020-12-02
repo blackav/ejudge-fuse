@@ -1,3 +1,4 @@
+/* -*- mode: c; c-basic-offset: 4 -*- */
 /* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
@@ -745,9 +746,15 @@ find_compiler(struct EjFuseRequest *efr, const unsigned char *name_or_id)
     errno = 0;
     char *eptr = NULL;
     long val = strtol(name_or_id, &eptr, 10);
-    if (*eptr || errno || (unsigned char *) eptr == name_or_id || (int) val != val || val <= 0 || val >= eci->compiler_size || !eci->compilers[val]) {
+    if (*eptr || errno || (unsigned char *) eptr == name_or_id || (int) val != val || val < 0) {
         contest_info_read_unlock(eci);
         return -ENOENT;
+    }
+    if (val > 0) {
+        if (val >= eci->compiler_size || !eci->compilers[val]) {
+            contest_info_read_unlock(eci);
+            return -ENOENT;
+        }
     }
     efr->lang_id = val;
     contest_info_read_unlock(eci);

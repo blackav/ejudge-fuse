@@ -1,4 +1,5 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* -*- mode: c; c-basic-offset: 4 -*- */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -147,6 +148,19 @@ ejf_readdir(
     if (res >= sizeof(ddot_path)) { abort(); }
     es.st_ino = get_inode(efs, ddot_path);
     filler(buf, "..", &es, 0);
+
+    if (epi->type != 0) {
+        unsigned char entry_path[PATH_MAX];
+        unsigned char entry_name[PATH_MAX];
+        res = snprintf(entry_path, sizeof(entry_path), "%s/0", dot_path);
+        if (res >= sizeof(entry_path)) { abort(); }
+        snprintf(entry_name, sizeof(entry_name), "%d", 0);
+        es.st_ino = get_inode(efs, entry_path);
+        filler(buf, entry_name, &es, 0);
+
+        problem_info_read_unlock(epi);
+        return 0;
+    }
 
     struct EjContestInfo *eci = contest_info_read_lock(efr->ecs);
     if (eci && eci->ok) {

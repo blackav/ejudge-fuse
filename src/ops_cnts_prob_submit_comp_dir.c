@@ -1,4 +1,5 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* -*- mode: c; c-basic-offset: 4 -*- */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -58,14 +59,21 @@ check_lang(struct EjFuseRequest *efr)
         return -ENOENT;
     }
 
-    if (efr->lang_id <= 0) {
-        problem_info_read_unlock(epi);
-        return -ENOENT;
-    }
-    if (epi->compiler_size && epi->compilers) {
-        if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+    if (epi->type != 0) {
+        if (efr->lang_id != 0) {
             problem_info_read_unlock(epi);
             return -ENOENT;
+        }
+    } else {
+        if (efr->lang_id <= 0) {
+            problem_info_read_unlock(epi);
+            return -ENOENT;
+        }
+        if (epi->compiler_size && epi->compilers) {
+            if (efr->lang_id >= epi->compiler_size || !epi->compilers[efr->lang_id]) {
+                problem_info_read_unlock(epi);
+                return -ENOENT;
+            }
         }
     }
     problem_info_read_unlock(epi);
