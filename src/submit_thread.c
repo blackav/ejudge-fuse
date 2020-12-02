@@ -1,4 +1,5 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* -*- mode: c; c-basic-offset: 4 -*- */
+/* Copyright (C) 2018-2020 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -150,9 +151,15 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
         contest_info_read_unlock(eci);
         return;
     }
-    if (si->lang_id <= 0 || si->lang_id >= eci->compiler_size || !eci->compilers[si->lang_id]) {
+    if (si->lang_id < 0) {
         contest_info_read_unlock(eci);
         return;
+    }
+    if (si->lang_id > 0) {
+      if (si->lang_id >= eci->compiler_size || !eci->compilers[si->lang_id]) {
+        contest_info_read_unlock(eci);
+        return;
+      }
     }
     contest_info_read_unlock(eci);
     struct EjProblemState *eps = problem_states_get(ecs->prob_states, si->prob_id);
@@ -167,10 +174,17 @@ thread_submit(struct EjSubmitThread *st, struct EjSubmitItem *si)
         problem_info_read_unlock(epi);
         return;
     }
-    if (epi->compiler_size && epi->compilers) {
-        if (si->lang_id >= epi->compiler_size || !epi->compilers[si->lang_id]) {
+    if (epi->type != 0) {
+        if (si->lang_id != 0) {
             problem_info_read_unlock(epi);
             return;
+        }
+    } else {
+        if (epi->compiler_size && epi->compilers) {
+            if (si->lang_id >= epi->compiler_size || !epi->compilers[si->lang_id]) {
+                problem_info_read_unlock(epi);
+                return;
+            }
         }
     }
     problem_info_read_unlock(epi);
