@@ -1,6 +1,6 @@
 #pragma once
 
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2023 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -224,6 +224,9 @@ struct EjProblemInfo
 
     time_t deadline;
     time_t effective_time;
+    time_t next_soft_deadline;
+    int date_penalty;
+    char *penalty_formula;
 
     // estimate statement size
     int est_stmt_size;

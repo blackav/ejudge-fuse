@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2023 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -562,6 +562,7 @@ problem_info_create(int prob_id)
     epi->full_user_score = -1;
     epi->min_score_1 = -1;
     epi->min_score_2 = -1;
+    epi->date_penalty = -1;
     return epi;
 }
 
@@ -579,6 +580,7 @@ problem_info_free(struct EjProblemInfo *epi)
         free(epi->output_file);
         free(epi->compilers);
         free(epi->log_s);
+        free(epi->penalty_formula);
         free(epi);
     }
 }

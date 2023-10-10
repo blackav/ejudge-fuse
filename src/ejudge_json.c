@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2023 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -854,6 +854,18 @@ ejudge_json_parse_problem_info(
         if ((jj = cJSON_GetObjectItem(js, "effective_time"))) {
             if (jj->type != cJSON_Number) goto invalid_json;
             epi->effective_time = jj->valueint;
+        }
+        if ((jj = cJSON_GetObjectItem(js, "next_soft_deadline"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            epi->next_soft_deadline = jj->valueint;
+        }
+        if ((jj = cJSON_GetObjectItem(js, "penalty"))) {
+            if (jj->type != cJSON_Number) goto invalid_json;
+            epi->date_penalty = jj->valueint;
+        }
+        if ((jj = cJSON_GetObjectItem(js, "penalty_formula"))) {
+            if (jj->type != cJSON_String) goto invalid_json;
+            epi->penalty_formula = strdup(jj->valuestring);
         }
     } else if (jok->type == cJSON_False) {
         fprintf(err_f, "request failed at server side: <%s>\n", resp_s);

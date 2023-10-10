@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Alexander Chernov <cher@ejudge.ru> */
+/* Copyright (C) 2018-2023 Alexander Chernov <cher@ejudge.ru> */
 
 /*
  * This file is part of ejudge-fuse.
@@ -570,6 +570,12 @@ ejfuse_problem_info_text(struct EjProblemInfo *epi, struct EjContestState *ecs)
     }
     if (epi->deadline > 0) {
         kvv_push_back_move_str(&kvv, 1, "Deadline", time_to_str(epi->deadline));
+    }
+    if (epi->next_soft_deadline > 0) {
+        kvv_push_back_move_str(&kvv, 1, "Next Soft Deadline", time_to_str(epi->next_soft_deadline));
+    }
+    if (epi->penalty_formula && epi->penalty_formula[0]) {
+        kvv_push_back_const_str(&kvv, 1, "Penalty Formula", epi->penalty_formula);
     }
     if (epi->compiler_size > 0 && epi->compilers && ecs) {
         struct EjContestInfo *eci = contest_info_read_lock(ecs);
